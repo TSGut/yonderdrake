@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use Yonderdrake, please cite this software."
+title: "Yonderdrake"
+type: software
+authors:
+  - family-names: Gutleb
+    given-names: Timon S.
+license: MIT
+repository-code: "https://github.com/TSGut/yonderdrake"

@@ -1,0 +1,168 @@
+/* Fira Sans 4.301 and Fira Mono 3.2, distributed under the SIL OFL 1.1. */
+@font-face {
+  font-display: swap;
+  font-family: "Fira Sans";
+  font-style: normal;
+  font-weight: 400;
+  src: url("fonts/fira-sans-regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Fira Sans";
+  font-style: italic;
+  font-weight: 400;
+  src: url("fonts/fira-sans-italic.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Fira Sans";
+  font-style: normal;
+  font-weight: 500;
+  src: url("fonts/fira-sans-medium.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Fira Sans";
+  font-style: normal;
+  font-weight: 600;
+  src: url("fonts/fira-sans-semibold.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Fira Sans";
+  font-style: normal;
+  font-weight: 700;
+  src: url("fonts/fira-sans-bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Fira Mono";
+  font-style: normal;
+  font-weight: 400;
+  src: url("fonts/fira-mono-regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Fira Mono";
+  font-style: normal;
+  font-weight: 500;
+  src: url("fonts/fira-mono-medium.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Fira Mono";
+  font-style: normal;
+  font-weight: 700;
+  src: url("fonts/fira-mono-bold.woff2") format("woff2");
+}
+
+:root {
+  --yonderdrake-teal: #146c6e;
+  --yonderdrake-green: #628b46;
+  --yonderdrake-gold: #e7ad2f;
+}
+
+body {
+  --font-stack: "Fira Sans", sans-serif;
+  --font-stack--headings: "Fira Sans", sans-serif;
+  --font-stack--monospace: "Fira Mono", monospace;
+}
+
+.sidebar-logo {
+  height: auto;
+  width: 100%;
+}
+
+.content h1,
+.content h2 {
+  letter-spacing: -0.015em;
+}
+
+#yonderdrake > h1::first-letter {
+  color: var(--yonderdrake-teal);
+}
+
+.doc-figure {
+  display: block;
+  height: auto;
+  margin: 1.5rem auto 2rem;
+  max-width: 940px;
+  width: 100%;
+}
+
+.doc-figure img {
+  height: auto;
+  width: 100%;
+}
+
+#furo-main-content img {
+  height: auto;
+  max-width: 100%;
+}
+
+.doc-video {
+  margin: 1.5rem auto 2rem;
+  max-width: 940px;
+}
+
+.doc-video video {
+  background: var(--color-background-secondary);
+  border: 1px solid var(--color-foreground-border);
+  border-radius: 0.35rem;
+  display: block;
+  height: auto;
+  width: 100%;
+}
+
+.doc-video figcaption {
+  color: var(--color-foreground-muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  padding: 0.6rem 0.35rem 0;
+  text-align: center;
+}
+
+.doc-video-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  margin: 1.4rem 0 2rem;
+}
+
+.doc-video-grid .doc-video {
+  margin: 0;
+}
+
+.doc-figure-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  margin: 1.4rem 0 2rem;
+}
+
+.doc-figure-grid figure {
+  background: var(--color-background-secondary);
+  border: 1px solid var(--color-foreground-border);
+  border-radius: 0.35rem;
+  margin: 0;
+  padding: 0.65rem;
+}
+
+.doc-figure-grid img {
+  height: auto;
+  width: 100%;
+}
+
+.doc-figure-grid figcaption {
+  color: var(--color-foreground-muted);
+  font-size: 0.88rem;
+  line-height: 1.35;
+  padding: 0.55rem 0.25rem 0.15rem;
+}

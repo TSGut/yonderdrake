@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pure-python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: python -m pip install -e '.[dev]'
+      - run: make lint
+      - run: make tests
+      - run: python -m build
+
+  firedrake:
+    name: Firedrake (${{ matrix.suite }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [serial, mpi-2, mpi-4]
+    container:
+      image: firedrakeproject/firedrake-vanilla-default:2026.4.0
+    env:
+      PYTHON: python3
+      MPIEXEC_FLAGS: --oversubscribe
+      OMP_NUM_THREADS: "1"
+      OMPI_ALLOW_RUN_AS_ROOT: "1"
+      OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: $PYTHON -m pip install -e '.[test]'
+      - name: Serial Firedrake integration tests
+        if: matrix.suite == 'serial'
+        run: PYTEST_ADDOPTS='-m "not parallel"' $PYTHON -m pytest tests/integration
+      - name: MPI tests
+        if: matrix.suite != 'serial'
+        run: make ${{ matrix.suite }}

@@ -1,0 +1,40 @@
+# Python bytecode and tool caches
+__pycache__/
+*.py[codz]
+.coverage
+.coverage.*
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environments and packaging output
+.firedrake/
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+
+# Documentation output
+docs/build/
+
+# Generated numerical and visual output
+benchmarks/benchmarks-output/
+docs/source/_static/gallery/*-data.csv.gz
+demos/demo-output/*
+!demos/demo-output/caputo-wismer-brainweb-sources-readme.gif
+!demos/demo-output/caputo-wismer-brainweb-imaging-readme.png
+!demos/demo-output/fractional-heat-koch-snowflake.gif
+
+# BrainWeb is upstream data and must not be redistributed.
+demos/demo-output/.brainweb/
+demos/**/phantom_1.0mm_normal_crisp*
+
+# Local scratch work
+experiments/
+
+# Editor and operating-system files
+.DS_Store
+._*
+.idea/
+.vscode/
