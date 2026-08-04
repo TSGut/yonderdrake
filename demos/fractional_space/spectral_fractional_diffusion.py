@@ -60,7 +60,8 @@ def main() -> None:
             "snes_type": "ksponly",
             "mat_type": "matfree",
             "ksp_type": "gmres",
-            "pc_type": "none",
+            "pc_type": "python",
+            "pc_python_type": "firedrake.MassInvPC",
         },
     )
     caputo_coefficient = gamma(power + 1.0) / gamma(power + 1.0 - alpha)
