@@ -25,6 +25,7 @@ EXPECTED_PUBLIC = {
     "FastObliviousCQ",
     "FractionalTimeStepper",
     "FullHistory",
+    "Jacobi",
     "LubichCQ",
     "ModeCountAdvisoryWarning",
     "Oscillator",

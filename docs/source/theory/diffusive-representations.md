@@ -29,6 +29,7 @@ undamped construction described below.
 | Representation | Quadrature | Status | Source |
 | --- | --- | --- | --- |
 | `Cayley` | Gauss-Jacobi after a Cayley map of selectable exponent | Default | Generalizes [Diethelm (2008)](https://doi.org/10.1007/s11075-008-9193-8) and [Birk and Song (2010)](https://doi.org/10.1007/s00466-010-0510-4) |
+| `Jacobi` | Gauss-Jacobi after a two-parameter endpoint map | Expert | [Diethelm (2023)](https://doi.org/10.1109/ICFDA58234.2023.10153228) |
 | `SumOfExponentials` | Dyadic Gaussian construction over a requested interval | Supported alternative | [Jiang et al. (2017)](https://doi.org/10.4208/cicp.OA-2016-0136) |
 | `Diethelm2022` | Published Gauss-Laguerre rule, or truncated trapezoidal/Simpson/Gauss-Legendre rules | Comparison only | [Diethelm (2022)](https://doi.org/10.3390/math10081245), [(2023)](https://doi.org/10.1007/978-981-19-7716-9_1) |
 | `YuanAgrawal` | Original Gauss-Laguerre rule | Comparison only | [Yuan and Agrawal (2002)](https://doi.org/10.1115/1.1448322) |
@@ -61,7 +62,22 @@ places the Jacobi exponents on the degenerate $\alpha+\beta=-1$ recurrence).
 
 Two of these exponents are published as methods and are available under their
 own names: `Diethelm2008(n)` is `Cayley(n, power=2)` and `BirkSong(n)` is
-`Cayley(n, power=4)`. They are likely all you need for your application.
+`Cayley(n, power=4)`.
+
+Nothing forces the two ends of the map to share an exponent. Taking
+$\lambda(x)=(1-x)^{\sigma}/(1+x)^{\rho}$ gives Jacobi exponents
+$\sigma\alpha-1$ and $\rho(1-\alpha)-1$, which exceed $-1$ for every positive
+$\sigma$ and $\rho$, so the whole two-parameter family is admissible.
+Yonderdrake implements it as `Jacobi(n, sigma=..., rho=...)`, with
+$\sigma=\rho=p$ recovering `Cayley(n, power=p)`. Larger $\sigma$ extends the
+long-memory end and larger $\rho$ the short-memory end, so the two can be
+tuned against each other.
+
+`Jacobi` is an expert option. Its parameters are supplied manually and should
+be chosen by measuring kernel error across the time interval and orders the
+problem needs, because the diagonal calibration that `Cayley` uses does not obviously
+carry over. At each order the pair is rejected when
+$\sigma\alpha+\rho(1-\alpha)=1$, where the recurrence degenerates.
 
 Mode counts above the recommended ranges remain available for convergence
 experiments. Construction emits `ModeCountAdvisoryWarning` and records

@@ -16,6 +16,7 @@ RiemannLiouvilleDerivative(u, alpha)
 BirkSong(num_modes, *, rate_scale=1.0)
 Diethelm2008(num_modes, *, rate_scale=1.0)
 Cayley(num_modes, *, power=None, t_final=None, min_step=None, rate_scale=1.0)
+Jacobi(num_modes, *, sigma, rho, rate_scale=1.0)
 SumOfExponentials(*, target_error, t_final, min_step)
 Diethelm2022(
     num_modes, *, quadrature="trapezoidal", target_error=1e-8,
@@ -49,7 +50,7 @@ FractionalTimeStepper(
 | Lubich CQ | Uniform-step BDF1 or BDF2. Starting corrections default to one for BDF1 and two for BDF2. `num_corrections` may be 0 through 16. Poorly conditioned correction systems emit `StartingCorrectionAdvisoryWarning` and record `starting_system_recommended=False`. Storage grows by one field per accepted step. |
 | Alikhanov L2-1$\sigma$ | Uniform-step Caputo formula with one shared $\alpha$. The complete residual is evaluated at $t_{n+\sigma}$, where $\sigma=1-\alpha/2$. Storage grows by one field per accepted step. |
 | Fast-oblivious CQ | Uniform-step BDF1 CQ with a Talbot contour, exact recent history, and dyadic older history. `num_levels` supports at most $2^{\mathtt{num\_levels}}-1$ steps. `nodes_per_level` is 4 through 64 and `direct_steps` is 6 through 4096. |
-| Diffusive representations | Positive-rate Birk-Song, Diethelm2008, Jiang sum-of-exponentials, Diethelm2022, or Yuan-Agrawal spectra. `SineDiffusive` has a separate undamped oscillator spectrum. Equal mode counts do not imply equal accuracy. |
+| Diffusive representations | Positive-rate Birk-Song, Cayley, Jacobi, Diethelm2008, Jiang sum-of-exponentials, Diethelm2022, or Yuan-Agrawal spectra. `SineDiffusive` has a separate undamped oscillator spectrum. Equal mode counts do not imply equal accuracy. |
 | Recurrence | One or more markers on scalar or fixed-size vector continuous Lagrange fields. `interpolant="quadratic"` is the default and stores one additional physical field for the whole stepper, not one per mode. {doc}`theory/time-stepping` gives the interpolant orders. |
 | Auxiliary ODE | One marker on a scalar continuous Lagrange field. The monolithic $V^{m+1}$ solve uses backward Euler or trapezoidal stepping. Use this formulation when PETSc needs field access to the modes. |
 | Oscillator | `SineDiffusive` only. Stores position and velocity for every mode, then advances them with an exact rotation and linear Duhamel forcing. Available through the general time steppers. The Caputo-Wismer application uses positive-rate representations. |
@@ -63,7 +64,7 @@ ceilings are resource guards.
 
 | Representation | Recommended maximum | Resource ceiling |
 | --- | ---: | ---: |
-| `BirkSong`, `Diethelm2008`, `Cayley` | 256 | 16,384 |
+| `BirkSong`, `Cayley`, `Diethelm2008`, `Jacobi` | 256 | 16,384 |
 | `SineDiffusive` | 128 | 16,384 |
 | `YuanAgrawal` | 2,048 | 16,384 |
 | `Diethelm2022` | 16,385 | 65,536 |
@@ -71,6 +72,11 @@ ceilings are resource guards.
 `SumOfExponentials` chooses its mode count from the requested interval and
 accuracy. It raises if that construction would require more than 65,536
 modes.
+
+`Jacobi` requires finite positive `sigma` and `rho`. At each requested order,
+$\sigma\alpha+\rho(1-\alpha)=1$ is rejected because the Gauss-Jacobi
+recurrence degenerates there. Parameter selection is manual and should cover
+the complete time interval and order range of the problem.
 
 :::{warning}
 `Diethelm2022`, `YuanAgrawal`, and `SineDiffusive` are literature-comparison

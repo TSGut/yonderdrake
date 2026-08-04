@@ -84,6 +84,11 @@ Firedrake's external-operator interface.
   fractional differential equations*, Computational Mechanics 46 (2010),
   721-734,
   [doi:10.1007/s00466-010-0510-4](https://doi.org/10.1007/s00466-010-0510-4).
+- K. Diethelm, *Diffusive representations for the numerical evaluation of
+  fractional integrals*, Proceedings of the 2023 International Conference on
+  Fractional Differentiation and its Applications (2023),
+  [doi:10.1109/ICFDA58234.2023.10153228](https://doi.org/10.1109/ICFDA58234.2023.10153228),
+  [arXiv:2301.11931](https://arxiv.org/abs/2301.11931).
 - S. Jiang, J. Zhang, Q. Zhang, and Zhimin Zhang, *Fast evaluation of the Caputo
   fractional derivative and its applications to fractional diffusion
   equations*, Communications in Computational Physics 21(3) (2017), 650-678,

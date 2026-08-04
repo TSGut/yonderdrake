@@ -17,6 +17,7 @@ from yonderdrake import (
     Diethelm2008,
     Diethelm2022,
     FullHistory,
+    Jacobi,
     ModeCountAdvisoryWarning,
     SineDiffusive,
     YuanAgrawal,
@@ -105,6 +106,104 @@ def test_named_representations_are_cayley_special_cases(
     named = named_type(24).spectrum(alpha)
     np.testing.assert_allclose(general.rates, named.rates, rtol=1.0e-13)
     np.testing.assert_allclose(general.weights, named.weights, rtol=1.0e-13)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("power", [2.0, 4.0, 5.5])
+@pytest.mark.parametrize("alpha", [0.1, 0.5, 0.9])
+def test_jacobi_diagonal_reproduces_cayley(
+    power: float,
+    alpha: float,
+) -> None:
+    general = Jacobi(24, sigma=power, rho=power).spectrum(alpha)
+    cayley = Cayley(24, power=power).spectrum(alpha)
+    np.testing.assert_allclose(general.rates, cayley.rates, rtol=1.0e-13)
+    np.testing.assert_allclose(general.weights, cayley.weights, rtol=1.0e-13)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("power", "named_type"), [(2.0, Diethelm2008), (4.0, BirkSong)]
+)
+@pytest.mark.parametrize("alpha", [0.1, 0.5, 0.9])
+def test_jacobi_diagonal_reproduces_named_representations(
+    power: float,
+    named_type,
+    alpha: float,
+) -> None:
+    general = Jacobi(24, sigma=power, rho=power).spectrum(alpha)
+    named = named_type(24).spectrum(alpha)
+    np.testing.assert_allclose(general.rates, named.rates, rtol=1.0e-13)
+    np.testing.assert_allclose(general.weights, named.weights, rtol=1.0e-13)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("sigma", "rho"), [(6.0, 2.0), (2.0, 6.0), (8.0, 1.5), (1.5, 8.0)]
+)
+@pytest.mark.parametrize("alpha", [0.1, 0.5, 0.9])
+def test_jacobi_reproduces_the_kernel_off_diagonal(
+    sigma: float,
+    rho: float,
+    alpha: float,
+) -> None:
+    error = _caputo_kernel_error(
+        Jacobi(128, sigma=sigma, rho=rho).spectrum(alpha),
+        alpha,
+        1.0e-1,
+        1.0e1,
+    )
+    assert error < 1.0e-8
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("degenerate_order", [0.5, np.nextafter(0.5, 1.0)])
+def test_jacobi_degeneracy_depends_on_the_order(
+    degenerate_order: float,
+) -> None:
+    representation = Jacobi(16, sigma=1.5, rho=0.5)
+    valid = representation.spectrum(0.3)
+    assert np.all(np.isfinite(valid.rates))
+    with pytest.raises(
+        ValueError,
+        match=r"Jacobi\(sigma=1\.5, rho=0\.5\).*alpha=0\.5",
+    ):
+        representation.spectrum(degenerate_order)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("sigma", "rho", "alpha"),
+    [(0.5, 2.0, 0.3), (2.0, 0.5, 0.7), (9.0, 1.5, 0.9)],
+)
+def test_jacobi_admissible_spectra_are_positive_and_finite(
+    sigma: float,
+    rho: float,
+    alpha: float,
+) -> None:
+    spectrum = Jacobi(48, sigma=sigma, rho=rho).spectrum(alpha)
+    assert np.all(np.isfinite(spectrum.rates))
+    assert np.all(np.isfinite(spectrum.weights))
+    assert np.all(spectrum.rates > 0.0)
+    assert np.all(spectrum.weights > 0.0)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("name", ["sigma", "rho"])
+@pytest.mark.parametrize("value", [0.0, -1.0, np.inf, np.nan])
+def test_jacobi_validates_map_parameters(name: str, value: float) -> None:
+    parameters = {"sigma": 2.0, "rho": 3.0, name: value}
+    with pytest.raises(ValueError, match=rf"{name} must be finite and positive"):
+        Jacobi(8, **parameters)
+
+
+@pytest.mark.unit
+def test_jacobi_checkpoint_metadata_round_trips() -> None:
+    representation = Jacobi(12, sigma=6.0, rho=2.25, rate_scale=3.0)
+    metadata = representation.describe(0.4)
+    assert metadata["sigma"] == 6.0
+    assert metadata["rho"] == 2.25
+    validate_checkpoint_representation(metadata, representation, 0.4)
 
 
 @pytest.mark.unit

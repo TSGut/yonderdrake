@@ -29,6 +29,9 @@ Representations
 .. autoclass:: yonderdrake.Cayley
    :members: power
 
+.. autoclass:: yonderdrake.Jacobi
+   :members: sigma, rho
+
 .. autoclass:: yonderdrake.Diethelm2008
    :members:
 

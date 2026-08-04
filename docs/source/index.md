@@ -67,6 +67,7 @@ family. The complete bibliography is in {doc}`references`.
 | Operator | Method | What it is | Use | Primary source |
 | --- | --- | --- | --- | --- |
 | Caputo and Riemann-Liouville | `Cayley` | Diffusive modes, Gauss-Jacobi after a Cayley map of selectable exponent | Default time memory | Generalizes [Diethelm (2008)](https://doi.org/10.1007/s11075-008-9193-8) and [Birk and Song (2010)](https://doi.org/10.1007/s00466-010-0510-4) |
+|  | `Jacobi` | Diffusive modes with independent low-rate and high-rate map exponents | Expert option for measured asymmetric rate ranges | [Diethelm (2023)](https://doi.org/10.1109/ICFDA58234.2023.10153228) |
 |  | `SumOfExponentials` | Tolerance-driven positive exponential sum on a declared time interval | Supported alternative | [Jiang et al. (2017)](https://doi.org/10.4208/cicp.OA-2016-0136) |
 |  | `Diethelm2022` | Truncated log-rate quadrature | Comparison only | [Diethelm (2022)](https://doi.org/10.3390/math10081245), [(2023)](https://doi.org/10.1007/978-981-19-7716-9_1) |
 |  | `YuanAgrawal` | Original Gauss-Laguerre rule | Comparison only | [Yuan and Agrawal (2002)](https://doi.org/10.1115/1.1448322) |

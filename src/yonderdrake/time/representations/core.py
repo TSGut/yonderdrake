@@ -20,6 +20,7 @@ _STARTING_CONDITION_ADVISORY = 1.0e8  # Float64 accuracy-saturation advisory.
 # The Jacobi exponents satisfy alpha + beta = power - 2, so a power of exactly
 # one lands on the degenerate alpha + beta = -1 recurrence.
 _CAYLEY_DEGENERATE_POWER = 1.0
+_JACOBI_DEGENERACY_TOLERANCE = 64.0 * np.finfo(np.float64).eps
 # Selection from a declared range never returns an exponent narrower than
 # Diethelm2008's published two, which is the best choice for narrow spans anyway
 # and keeps the automatic path clear of the degenerate power. Beyond twelve
@@ -675,6 +676,89 @@ class Cayley(_JacobiRepresentation):
         described["power"] = self._power
         if alpha is None:
             described["configurable_parameters"] = ("power", "rate_scale")
+        return described
+
+
+class Jacobi(_JacobiRepresentation):
+    """Two-parameter Gauss-Jacobi diffusive representation.
+
+    ``sigma`` controls the rate-map behaviour near ``x=1`` and ``rho``
+    controls it near ``x=-1``. Both parameters must be finite and positive.
+    """
+
+    _name = "Jacobi"
+    _reference = "doi:10.1109/ICFDA58234.2023.10153228"
+
+    def __init__(
+        self,
+        num_modes: int,
+        *,
+        sigma: float,
+        rho: float,
+        **method_parameters: Any,
+    ) -> None:
+        super().__init__(num_modes, **method_parameters)
+        self._sigma = _positive_finite(sigma, "sigma")
+        self._rho = _positive_finite(rho, "rho")
+
+    @property
+    def sigma(self) -> float:
+        """Return the exponent controlling the low-rate end of the map."""
+        return self._sigma
+
+    @property
+    def rho(self) -> float:
+        """Return the exponent controlling the high-rate end of the map."""
+        return self._rho
+
+    def _jacobi_exponents(self, alpha: float) -> tuple[float, float]:
+        return (
+            self._sigma * alpha - 1.0,
+            self._rho * (1.0 - alpha) - 1.0,
+        )
+
+    def _native_coefficients(
+        self,
+        alpha: float,
+        nodes: FloatArray,
+        quadrature_weights: FloatArray,
+    ) -> tuple[FloatArray, FloatArray]:
+        one_minus = 1.0 - nodes
+        one_plus = 1.0 + nodes
+        rates = np.power(one_minus, self._sigma) / np.power(
+            one_plus,
+            self._rho,
+        )
+        weights = (
+            (sin(pi * alpha) / pi)
+            * quadrature_weights
+            * np.power(one_plus, -self._rho)
+            * (self._sigma * one_plus + self._rho * one_minus)
+        )
+        return rates, weights
+
+    def spectrum(self, alpha: float) -> DiffusiveSpectrum:
+        """Generate a normalized spectrum for one immutable Caputo order."""
+        order = _validate_alpha(alpha)
+        exponent_sum = self._sigma * order + self._rho * (1.0 - order)
+        if abs(exponent_sum - 1.0) <= _JACOBI_DEGENERACY_TOLERANCE:
+            raise ValueError(
+                f"Jacobi(sigma={self._sigma}, rho={self._rho}) is "
+                f"degenerate at alpha={order}"
+            )
+        return super().spectrum(order)
+
+    def describe(self, alpha: float | None = None) -> dict[str, Any]:
+        """Describe configuration, or full generated metadata when ordered."""
+        described = super().describe(alpha)
+        described["rho"] = self._rho
+        described["sigma"] = self._sigma
+        if alpha is None:
+            described["configurable_parameters"] = (
+                "sigma",
+                "rho",
+                "rate_scale",
+            )
         return described
 
 
