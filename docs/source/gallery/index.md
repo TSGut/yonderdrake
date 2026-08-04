@@ -3,11 +3,14 @@
 Larger applications producing animations or figures and replot-ready CSV
 data. Every entry says what to watch for as the solution evolves and decays.
 
-Every entry is an ordinary Python script with a `main()` function. Run a script
-with the Python interpreter from an active Firedrake environment containing the
-plotting extra:
+Every entry is an ordinary Python script with a `main()` function. The scripts
+live in the repository rather than the installed package, so clone it to run
+them, then use the Python interpreter from an active Firedrake environment
+containing the plotting extra:
 
 ```console
+git clone https://github.com/TSGut/yonderdrake.git
+cd yonderdrake
 python -m pip install '.[visual]'
 python demos/gallery/<script>.py
 ```

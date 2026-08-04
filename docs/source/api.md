@@ -50,43 +50,16 @@ FractionalTimeStepper(
 | Alikhanov L2-1$\sigma$ | Uniform-step Caputo formula with one shared $\alpha$. The complete residual is evaluated at $t_{n+\sigma}$, where $\sigma=1-\alpha/2$. Storage grows by one field per accepted step. |
 | Fast-oblivious CQ | Uniform-step BDF1 CQ with a Talbot contour, exact recent history, and dyadic older history. `num_levels` supports at most $2^{\mathtt{num\_levels}}-1$ steps. `nodes_per_level` is 4 through 64 and `direct_steps` is 6 through 4096. |
 | Diffusive representations | Positive-rate Birk-Song, Diethelm2008, Jiang sum-of-exponentials, Diethelm2022, or Yuan-Agrawal spectra. `SineDiffusive` has a separate undamped oscillator spectrum. Equal mode counts do not imply equal accuracy. |
-| Recurrence | One or more markers on scalar or fixed-size vector continuous Lagrange fields. `interpolant="quadratic"` is the default. On smooth solved problems, linear and quadratic interpolation have orders $2-\alpha$ and $3-\alpha$. Both are approximately first order for the common $t^\alpha$ initial singularity. Quadratic interpolation stores one additional physical field for the whole stepper. It does not add a field per mode. |
-| Auxiliary ODE | One marker on a scalar continuous Lagrange field. The monolithic $V^{m+1}$ solve uses backward Euler or trapezoidal stepping. Backward Euler is first order. Trapezoidal is approximately second order for smooth solutions but falls to first order for a $t^\alpha$ initial singularity. Use this formulation when PETSc needs field access to the modes. |
+| Recurrence | One or more markers on scalar or fixed-size vector continuous Lagrange fields. `interpolant="quadratic"` is the default and stores one additional physical field for the whole stepper, not one per mode. {doc}`theory/time-stepping` gives the interpolant orders. |
+| Auxiliary ODE | One marker on a scalar continuous Lagrange field. The monolithic $V^{m+1}$ solve uses backward Euler or trapezoidal stepping. Use this formulation when PETSc needs field access to the modes. |
 | Oscillator | `SineDiffusive` only. Stores position and velocity for every mode, then advances them with an exact rotation and linear Duhamel forcing. Available through the general time steppers. The Caputo-Wismer application uses positive-rate representations. |
 | Time | Positive variable `dt`. The residual is evaluated at `t + dt`. `advance()` updates `u` and history. The caller updates `t`. |
 | State | History, statistics, reset, collective checkpointing, and Jacobian invalidation. |
 
-The recurrence orders below use the actual stepper with 120 Birk-Song modes and
-$N=100,200,400$ uniform steps:
-
-| $\alpha$ | Smooth linear | Smooth quadratic | Singular linear | Singular quadratic |
-| ---: | ---: | ---: | ---: | ---: |
-| 0.3 | 1.67 | 2.70 | 1.00 | 1.00 |
-| 0.6 | 1.39 | 2.40 | 0.99 | 1.00 |
-| 0.9 | 1.10 | 2.10 | 0.92 | 1.00 |
-
-At $N=400$, the corresponding quadratic error reductions are:
-
-| $\alpha$ | Smooth | Singular |
-| ---: | ---: | ---: |
-| 0.3 | 1129x | 1.42x |
-| 0.6 | 544x | 1.95x |
-| 0.9 | 315x | 3.37x |
-
-The warm median cost increased from 0.578 to 0.635 ms per step. These results
-support the quadratic default while showing that interpolation alone does not
-remove the accuracy loss from a weak initial singularity.
-
-On a four-material skullball problem with 120 modes per material and 4,225
-spatial degrees of freedom, quadratic recurrence increased explicit time-memory
-storage from 492 to 493 fields, or 15.859 to 15.891 MiB. Warm wall time increased
-from 6.04 to 6.35 ms per step. One physical history field is shared across all
-modes and materials.
-
-Fixed-count representations accept experiments beyond their usual useful
-range. Crossing a recommended maximum emits `ModeCountAdvisoryWarning` and
-sets `mode_count_recommended=False` in the representation metadata. The
-larger hard ceilings are resource guards.
+Mode counts above the recommended maximum stay available for convergence
+experiments. Crossing one emits `ModeCountAdvisoryWarning` and sets
+`mode_count_recommended=False` in the representation metadata. The larger hard
+ceilings are resource guards.
 
 | Representation | Recommended maximum | Resource ceiling |
 | --- | ---: | ---: |
@@ -101,22 +74,8 @@ modes.
 
 :::{warning}
 `Diethelm2022`, `YuanAgrawal`, and `SineDiffusive` are literature-comparison
-options. The first two are substantially more sensitive to mode count, time
-range, and scaling than
-`BirkSong` and `Diethelm2008`. `Diethelm2022` accepts `"gauss-laguerre"`,
-`"trapezoidal"`, `"simpson"`, or `"gauss-legendre"` quadrature. The published
-Gauss-Laguerre rule requires an even total `num_modes`, with two modes per
-Laguerre node. It has no truncation or scaling controls, so
-`truncation_radius`, a nondefault `target_error` or `decay_scale`, and a
-non-unit `rate_scale` are rejected. The other three rules use a truncated
-interval, and `target_error` selects its radius from a simplified envelope
-estimate. Gauss-Laguerre construction also raises if its rates, weights, or
-limiting weight-to-rate ratios cannot be represented safely in float64. For
-example, the largest accepted total counts are 44, 188, and 42 modes at
-`alpha=0.1`, `0.5`, and `0.9`, respectively. See
-{ref}`diffusive representations <diffusive-representations>`.
-`SineDiffusive` has very slow $O(m^{\alpha-1})$ quadrature convergence and
-persistent undamped long-time error.
+options rather than production choices. Their controls and accuracy are
+described in {ref}`diffusive representations <diffusive-representations>`.
 :::
 
 `SumOfExponentials` derives an alpha-dependent mode count from
@@ -159,14 +118,12 @@ from yonderdrake.applications import (
 | Adjoint | The exact discrete transpose includes heterogeneous density, impedance terms, PML auxiliary fields, and the coupled reversed-attenuation filter. Configured sources remain an affine offset to the initial-pressure map. |
 | Parallelism | Forward propagation, PML, exact adjoints, time reversal, and iterative reconstruction support distributed meshes. Parallel reconstruction uses PETSc TAO. |
 
-`CaputoWismerStepper` uses `BirkSong(num_modes)` by default. See
+`CaputoWismerStepper` uses `BirkSong(num_modes)` by default. Pass a
+tolerance-driven `SumOfExponentials` explicitly as `representation=`. Its
+centred wave scheme keeps its own linear modal interpolation, which the
+`Recurrence` interpolant option does not change. See
 {doc}`examples/caputo-wismer-imaging` for the disk, ball, and BrainWeb vessel
-examples. A tolerance-driven `SumOfExponentials` must be passed explicitly as
-`representation=`. Its fixed-step centred wave scheme retains linear modal
-interpolation. The `Recurrence` interpolant option belongs to the general time
-stepper and does not alter the coupled Caputo-Wismer forward and adjoint update.
-The dedicated linear interpolation is part of its centred forward and adjoint
-scheme.
+examples.
 
 ## Exponential memory
 
@@ -243,7 +200,7 @@ PeriodicFractionalLaplacian(u, s)
 
 | Topic | Support |
 | --- | --- |
-| Realization | Fourier-series multiplier $|2\pi k/L|^{2s}$ with a zero constant mode. |
+| Realization | Fourier-series multiplier $\lvert 2\pi k/L\rvert^{2s}$ with a zero constant mode. |
 | Scope | Scalar degree-one nodal fields on fully periodic uniform 1D intervals, 2D quadrilateral rectangles, or 3D hexahedral boxes. |
 | Validation | Uniform spacing, tensor cells, complete periodicity, and a one-to-one global-DOF/grid map are checked collectively during construction. |
 | Boundary | No boundary conditions. Every coordinate direction must be periodic. |

@@ -20,9 +20,5 @@ iterative solver tolerances below the measured discretization error. See
 
 For smooth solved problems, linear and quadratic recurrence have orders
 $2-\alpha$ and $3-\alpha$. Both are approximately first order on uniform steps
-for a $t^\alpha$ initial singularity. On the relaxation test reported in
-{ref}`time-stepping`, grading reduced the maximum error by 26.4x before changing
-the interpolant. Quadratic interpolation then improved that graded result and
-allowed a more aggressive grading exponent. Grade the steps first for an
-initial singularity, then check whether quadratic interpolation and stronger
-grading compose profitably for the problem at hand.
+for a $t^\alpha$ initial singularity, where grading the steps gains far more
+than the interpolant does.

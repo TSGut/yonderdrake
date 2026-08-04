@@ -29,13 +29,10 @@ $$
 $$
 
 BDF2 is the default. `num_corrections` adds Lubich starting weights that are
-exact for the first powers $t^{\alpha},t^{2\alpha},\ldots$. Their small dense
-systems are solved in higher precision before the coefficients are converted
-to float64. The default is one correction for BDF1 and two for BDF2.
+exact for the first powers $t^{\alpha},t^{2\alpha},\ldots$. The default is one
+correction for BDF1 and two for BDF2.
 
-This implementation stores the increments in one contiguous local array and
-applies all history weights in one batched matrix-vector operation. It still
-uses $O(n)$ distributed-field storage and $O(n)$ work at step $n$, giving
+It uses $O(n)$ distributed-field storage and $O(n)$ work at step $n$, giving
 $O(N^2)$ total history work. It requires a uniform timestep. BDF2 gives
 second-order convergence for sufficiently regular data. Initial singularities
 can reduce the observed order, which is why the starting corrections are part

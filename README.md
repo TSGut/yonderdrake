@@ -14,6 +14,8 @@
 <p align="center">
   <a href="https://github.com/TSGut/yonderdrake/actions/workflows/ci.yml"><img src="https://github.com/TSGut/yonderdrake/actions/workflows/ci.yml/badge.svg" alt="Tests"></a>
   <a href="https://timon.gutleb.com/yonderdrake/"><img src="https://github.com/TSGut/yonderdrake/actions/workflows/docs.yml/badge.svg" alt="Documentation"></a>
+  <a href="https://pypi.org/project/yonderdrake/"><img src="https://img.shields.io/pypi/v/yonderdrake.svg" alt="PyPI"></a>
+  <a href="https://doi.org/10.5281/zenodo.21782150"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.21782150.svg" alt="DOI"></a>
   <a href="https://github.com/TSGut/yonderdrake/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
 </p>
 
@@ -43,6 +45,9 @@ mean rebuilding the problem each time.
 - Compatibility with [Irksome](https://www.firedrakeproject.org/Irksome/index.html) for classical time stepping alongside Yonderdrake operators.
 
 ## Examples
+
+The demo scripts live in this repository rather than the installed package, so
+clone it to run them yourself.
 
 ### Fractional time
 
@@ -83,25 +88,18 @@ full applications.
 
 ## Installation
 
-Create a [Firedrake environment](https://www.firedrakeproject.org/install.html):
+Create a [Firedrake environment](https://www.firedrakeproject.org/install.html),
+then install into it:
 
 ```console
-git clone https://github.com/TSGut/yonderdrake.git
-cd yonderdrake
-python -m pip install .
+python -m pip install yonderdrake
 ```
 
 Add the plotting dependencies to run the gallery demos or regenerate their
 media:
 
 ```console
-python -m pip install '.[visual]'
-```
-
-For development:
-
-```console
-python -m pip install -e '.[dev,docs]'
+python -m pip install 'yonderdrake[visual]'
 ```
 
 Firedrake supplies MPI and PETSc. See

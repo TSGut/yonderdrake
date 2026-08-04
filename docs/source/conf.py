@@ -88,7 +88,8 @@ copybutton_prompt_is_regexp = True
 linkcheck_ignore = [
     r"https://brainweb\.bic\.mni\.mcgill\.ca/.*",
     r"https://doi\.org/10\.1115/1\.1448322",
-    r"https://doi\.org/10\.1137/15M1033952",
+    # epubs.siam.org answers every automated request with 403
+    r"https://doi\.org/10\.1137/.*",
     r"https://doi\.org/10\.3390/math10081245",
     r"https://doi\.org/10\.1145/2566630",
 ]

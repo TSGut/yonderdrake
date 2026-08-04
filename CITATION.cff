@@ -1,6 +1,9 @@
 cff-version: 1.2.0
 message: "If you use Yonderdrake, please cite this software."
 title: "Yonderdrake"
+version: 0.1.0a1
+date-released: 2026-08-04
+doi: 10.5281/zenodo.21782150
 type: software
 authors:
   - family-names: Gutleb
