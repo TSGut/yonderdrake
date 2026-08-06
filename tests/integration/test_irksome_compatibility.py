@@ -196,7 +196,7 @@ def test_riesz_fractional_laplacian_inside_irksome_dt_form() -> None:
         0.6,
         bcs=boundary,
         assembly="hmatrix",
-        quadrature_degree=2,
+        target_quadrature_degree=2,
         compression_tolerance=1.0e-3,
         leaf_size=4,
     )

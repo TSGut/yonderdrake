@@ -9,11 +9,16 @@ from typing import Protocol
 
 import numpy as np
 
+from yonderdrake.riesz.admissibility import _admissible_bounds
 from yonderdrake.riesz.dense import (
     GalerkinEntryEvaluator,
     RieszMeshData,
 )
 from yonderdrake.riesz.outer_quadrature import SimplexQuadrature
+from yonderdrake.riesz.source_evaluation import (
+    SourceActionEvaluator,
+    SourceEvaluation,
+)
 
 
 class EntryEvaluator(Protocol):
@@ -135,34 +140,17 @@ def _build_cluster(
     )
 
 
-def _box_distance(
-    left_lower: np.ndarray,
-    left_upper: np.ndarray,
-    right_lower: np.ndarray,
-    right_upper: np.ndarray,
-) -> float:
-    separation = np.maximum(
-        0.0,
-        np.maximum(left_lower - right_upper, right_lower - left_upper),
-    )
-    return float(np.linalg.norm(separation))
-
-
 def _admissible(left: Cluster, right: Cluster, eta: float) -> bool:
-    support_distance = _box_distance(
-        left.support_lower,
-        left.support_upper,
-        right.support_lower,
-        right.support_upper,
-    )
-    distance = _box_distance(
+    return _admissible_bounds(
         left.lower,
         left.upper,
+        left.support_lower,
+        left.support_upper,
         right.lower,
         right.upper,
-    )
-    return (
-        support_distance > 0.0 and min(left.diameter, right.diameter) <= eta * distance
+        right.support_lower,
+        right.support_upper,
+        eta,
     )
 
 
@@ -182,12 +170,8 @@ def _aca(
     approximation_norm_squared = 0.0
 
     for _ in range(maximum_rank):
-        left = (
-            np.column_stack(left_factors) if left_factors else None
-        )
-        right = (
-            np.column_stack(right_factors) if right_factors else None
-        )
+        left = np.column_stack(left_factors) if left_factors else None
+        right = np.column_stack(right_factors) if right_factors else None
         candidates = [pivot_row]
         candidates.extend(
             index
@@ -272,7 +256,7 @@ def _aca(
 
 
 class HierarchicalRieszBackend:
-    """Compress well-separated exact Galerkin blocks with ACA."""
+    """Compress well-separated Galerkin blocks with ACA."""
 
     def __init__(
         self,
@@ -280,6 +264,8 @@ class HierarchicalRieszBackend:
         order: float,
         quadrature: SimplexQuadrature,
         *,
+        source_evaluation: SourceEvaluation = "endpoint",
+        source_quadrature_degree: int = 4,
         compression_tolerance: float = 1.0e-6,
         admissibility: float = 1.0,
         leaf_size: int = 16,
@@ -287,6 +273,8 @@ class HierarchicalRieszBackend:
         self.mesh_data = mesh_data
         self.order = order
         self.quadrature = quadrature
+        self.source_evaluation = source_evaluation
+        self.source_quadrature_degree = source_quadrature_degree
         self.compression_tolerance = compression_tolerance
         self.admissibility = admissibility
         self.leaf_size = leaf_size
@@ -298,7 +286,9 @@ class HierarchicalRieszBackend:
         self._near_field_blocks = 0
         self._cluster_count = 0
         self._leaf_cluster_count = 0
-        self._exact_entry_evaluations = 0
+        self._entry_evaluations = 0
+        self._source_endpoint_evaluations = 0
+        self._source_gauss_evaluations = 0
         self._far_field_ranks: list[int] = []
 
     def _count_clusters(self, cluster: Cluster) -> None:
@@ -326,11 +316,30 @@ class HierarchicalRieszBackend:
             self.leaf_size,
         )
         self._count_clusters(root)
-        evaluator = GalerkinEntryEvaluator(
+        source_action = SourceActionEvaluator(
+            self.mesh_data.dof_coordinates.shape[1],
+            self.order,
+            self.source_evaluation,
+            self.source_quadrature_degree,
+        )
+        near_evaluator = GalerkinEntryEvaluator(
             self.mesh_data,
             self.order,
             self.quadrature,
             cache=True,
+            admissibility=self.admissibility,
+            pair_admissible=False,
+            source_action=source_action,
+        )
+        far_evaluator = GalerkinEntryEvaluator(
+            self.mesh_data,
+            self.order,
+            self.quadrature,
+            cache=True,
+            admissibility=self.admissibility,
+            pair_admissible=True,
+            source_action=source_action,
+            prepared_supports=near_evaluator.prepared_supports,
         )
         blocks: list[DenseBlock | LowRankBlock] = []
 
@@ -341,7 +350,7 @@ class HierarchicalRieszBackend:
                 self.admissibility,
             ):
                 left, right = _aca(
-                    evaluator,
+                    far_evaluator,
                     row_cluster.indices,
                     column_cluster.indices,
                     self.compression_tolerance,
@@ -363,7 +372,7 @@ class HierarchicalRieszBackend:
                     DenseBlock(
                         row_cluster.indices,
                         column_cluster.indices,
-                        evaluator.block(
+                        near_evaluator.block(
                             row_cluster.indices,
                             column_cluster.indices,
                         ),
@@ -394,8 +403,13 @@ class HierarchicalRieszBackend:
                 add_blocks(row_cluster, column_cluster.right)
 
         add_blocks(root, root)
-        self._exact_entry_evaluations = evaluator.evaluation_count
-        evaluator.clear_cache()
+        self._entry_evaluations = (
+            near_evaluator.evaluation_count + far_evaluator.evaluation_count
+        )
+        self._source_endpoint_evaluations = source_action.endpoint_evaluations
+        self._source_gauss_evaluations = source_action.quadrature_evaluations
+        near_evaluator.clear_cache()
+        far_evaluator.clear_cache()
         self.blocks = tuple(blocks)
         self.build_seconds = perf_counter() - started
         return self.blocks
@@ -434,9 +448,13 @@ class HierarchicalRieszBackend:
         dense_entries = dimension**2
         return {
             "assembly": "hmatrix",
-            "quadrature_degree": self.quadrature.degree,
-            "quadrature_rule": self.quadrature.rule,
-            "quadrature_points_per_cell": self.quadrature.num_points,
+            "source_evaluation": self.source_evaluation,
+            "source_quadrature_degree": self.source_quadrature_degree,
+            "source_endpoint_evaluations": self._source_endpoint_evaluations,
+            "source_gauss_evaluations": self._source_gauss_evaluations,
+            "target_quadrature_degree": self.quadrature.degree,
+            "target_quadrature_rule": self.quadrature.rule,
+            "target_quadrature_points_per_cell": self.quadrature.num_points,
             "compression_tolerance": self.compression_tolerance,
             "admissibility": self.admissibility,
             "leaf_size": self.leaf_size,
@@ -451,7 +469,7 @@ class HierarchicalRieszBackend:
             "stored_entries": stored_entries,
             "dense_entries": dense_entries,
             "compression_ratio": stored_entries / dense_entries,
-            "exact_entry_evaluations": self._exact_entry_evaluations,
+            "entry_evaluations": self._entry_evaluations,
             "build_seconds": self.build_seconds,
             "applications": self.apply_count,
             "apply_seconds": self.apply_seconds,

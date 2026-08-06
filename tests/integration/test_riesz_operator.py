@@ -19,7 +19,7 @@ def make_problem(assembly: str):
         u,
         0.3,
         assembly=assembly,
-        quadrature_degree=5,
+        target_quadrature_degree=5,
         compression_tolerance=1.0e-8,
         admissibility=1.0,
         leaf_size=1,
@@ -59,7 +59,7 @@ def test_riesz_dense_matfree_and_hmatrix_actions_agree() -> None:
     assert dense_operator.diagnostics()["stored_entries"] == dense_space.dim() ** 2
     assert free_operator.diagnostics()["stored_entries"] == 0
     assert hierarchical_operator.diagnostics()["assembly"] == "hmatrix"
-    assert dense_operator.diagnostics()["quadrature_rule"] == "boundary"
+    assert dense_operator.diagnostics()["target_quadrature_rule"] == "boundary"
     assert dense_u.function_space().dim() == free_u.function_space().dim()
     assert hierarchical_u.function_space().dim() == dense_space.dim()
     assert hierarchical_space.dim() == dense_space.dim()
@@ -72,13 +72,13 @@ def test_riesz_ordinary_quadrature_remains_selectable() -> None:
     operator = RieszFractionalLaplacian(
         fd.Function(space).assign(1.0),
         0.3,
-        quadrature_degree=4,
-        quadrature_rule="ordinary",
+        target_quadrature_degree=4,
+        target_quadrature_rule="ordinary",
     )
     fd.assemble(operator)
     diagnostics = operator.diagnostics()
-    assert diagnostics["quadrature_rule"] == "ordinary"
-    assert diagnostics["quadrature_points_per_cell"] == 9
+    assert diagnostics["target_quadrature_rule"] == "ordinary"
+    assert diagnostics["target_quadrature_points_per_cell"] == 9
 
 
 @pytest.mark.verification
@@ -93,9 +93,9 @@ def test_riesz_edge_quadrature_defaults_are_live() -> None:
     )
     fd.assemble(operator)
     diagnostics = operator.diagnostics()
-    assert diagnostics["quadrature_rule"] == "boundary"
-    assert diagnostics["quadrature_degree"] == 6
-    assert diagnostics["quadrature_points_per_cell"] == 48
+    assert diagnostics["target_quadrature_rule"] == "boundary"
+    assert diagnostics["target_quadrature_degree"] == 6
+    assert diagnostics["target_quadrature_points_per_cell"] == 48
 
 
 @pytest.mark.verification
@@ -105,14 +105,12 @@ def test_riesz_cg2_backends_agree() -> None:
         mesh = fd.UnitSquareMesh(1, 1)
         space = fd.FunctionSpace(mesh, "CG", 2)
         x, y = fd.SpatialCoordinate(mesh)
-        u = fd.Function(space).interpolate(
-            0.2 + x - 0.3 * y + 0.4 * x * y
-        )
+        u = fd.Function(space).interpolate(0.2 + x - 0.3 * y + 0.4 * x * y)
         operator = RieszFractionalLaplacian(
             u,
             0.3,
             assembly=assembly,
-            quadrature_degree=6,
+            target_quadrature_degree=6,
             compression_tolerance=1.0e-9,
             leaf_size=2,
         )
@@ -127,20 +125,18 @@ def test_riesz_tetrahedral_cg1_and_cg2_fields(degree: int) -> None:
     mesh = fd.UnitCubeMesh(1, 1, 1)
     space = fd.FunctionSpace(mesh, "CG", degree)
     x, y, z = fd.SpatialCoordinate(mesh)
-    source = fd.Function(space).interpolate(
-        0.2 + x - 0.3 * y + 0.1 * z + 0.2 * x * y
-    )
+    source = fd.Function(space).interpolate(0.2 + x - 0.3 * y + 0.1 * z + 0.2 * x * y)
     operator = RieszFractionalLaplacian(
         source,
         0.3,
         assembly="matfree",
-        quadrature_degree=1,
+        target_quadrature_degree=1,
     )
     result = fd.assemble(operator)
     assert result.function_space() == space
     assert np.all(np.isfinite(result.dat.data_ro))
     diagnostics = operator.diagnostics()
-    assert diagnostics["quadrature_rule"] == "boundary"
+    assert diagnostics["target_quadrature_rule"] == "boundary"
     assert diagnostics["assembly"] == "matfree"
 
 
@@ -156,7 +152,7 @@ def test_riesz_tetrahedral_backends_agree() -> None:
             source,
             0.3,
             assembly=assembly,
-            quadrature_degree=1,
+            target_quadrature_degree=1,
             compression_tolerance=1.0e-8,
             leaf_size=2,
         )
@@ -177,7 +173,7 @@ def test_riesz_mass_solver_parameters_are_public() -> None:
     operator = RieszFractionalLaplacian(
         u,
         0.3,
-        quadrature_degree=3,
+        target_quadrature_degree=3,
         mass_solver_parameters=parameters,
     )
     fd.assemble(operator)
@@ -194,7 +190,7 @@ def test_riesz_jacobian_action_matrix_and_adjoint(assembly: str) -> None:
         direction,
         0.3,
         assembly=assembly,
-        quadrature_degree=5,
+        target_quadrature_degree=5,
     )
     expected = fd.assemble(direction_operator)
     jacobian = fd.derivative(operator, u, fd.TrialFunction(space))
@@ -236,18 +232,18 @@ def test_riesz_validation_is_immediate() -> None:
         RieszFractionalLaplacian(object(), 0.4, extension="periodic")
     with pytest.raises(ValueError, match="assembly"):
         RieszFractionalLaplacian(object(), 0.4, assembly="sparse")
-    with pytest.raises(ValueError, match="quadrature_rule"):
+    with pytest.raises(ValueError, match="target_quadrature_rule"):
         RieszFractionalLaplacian(
             object(),
             0.4,
-            quadrature_rule="adaptive",
+            target_quadrature_rule="adaptive",
         )
     for degree in (0, 1.5, True):
-        with pytest.raises(ValueError, match="quadrature_degree"):
+        with pytest.raises(ValueError, match="target_quadrature_degree"):
             RieszFractionalLaplacian(
                 object(),
                 0.4,
-                quadrature_degree=degree,
+                target_quadrature_degree=degree,
             )
     with pytest.raises(TypeError, match="compression_tolerance"):
         RieszFractionalLaplacian(
@@ -342,7 +338,7 @@ def test_riesz_cache_invalidation_and_order_immutability() -> None:
     operator = RieszFractionalLaplacian(
         fd.Function(space).assign(1.0),
         order,
-        quadrature_degree=2,
+        target_quadrature_degree=2,
     )
     assert operator.diagnostics()["applications"] == 0
     fd.assemble(operator)
@@ -371,7 +367,7 @@ def test_riesz_complete_boundary_conditions_define_high_order_domain(
         u,
         0.75,
         bcs=bc,
-        quadrature_degree=3,
+        target_quadrature_degree=3,
     )
     result = fd.assemble(operator)
     np.testing.assert_allclose(result.dat.data_ro[bc.nodes], 0.0)
@@ -393,7 +389,7 @@ def test_riesz_tetrahedral_boundary_conditions_define_high_order_domain(
         source,
         0.7,
         bcs=bc,
-        quadrature_degree=1,
+        target_quadrature_degree=1,
     )
     result = fd.assemble(operator)
     assert np.all(np.isfinite(result.dat.data_ro))

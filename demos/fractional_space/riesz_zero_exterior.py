@@ -25,7 +25,7 @@ def main() -> None:
         u,
         0.35,
         extension="zero",
-        quadrature_degree=5,
+        target_quadrature_degree=5,
         assembly="matfree",
     )
     action = assemble(operator)

@@ -176,20 +176,14 @@ def _relative_error_from_spectrum(
         z = scaled[small]
         response[small] = 1.0 + z * (
             -1.0 / 3.0
-            + z
-            * (
-                1.0 / 12.0
-                + z * (-1.0 / 60.0 + z * (1.0 / 360.0 - z / 2520.0))
-            )
+            + z * (1.0 / 12.0 + z * (-1.0 / 60.0 + z * (1.0 / 360.0 - z / 2520.0)))
         )
         z = scaled[~small]
         response[~small] = (2.0 / z) * (1.0 + np.expm1(-z) / z)
         observed = np.square(times) * (response @ weights)
         exact = 2.0 * times ** (2.0 - alpha) / gamma(3.0 - alpha)
     elif problem == "exponential":
-        normalized_modes = -np.expm1(
-            -np.outer(times, 1.0 + rates)
-        ) / (1.0 + rates)
+        normalized_modes = -np.expm1(-np.outer(times, 1.0 + rates)) / (1.0 + rates)
         observed = normalized_modes @ weights
         exact = gammainc(1.0 - alpha, times)
     else:
@@ -224,25 +218,17 @@ def _relative_error(
             z = scaled[small]
             response[small] = 1.0 + z * (
                 -1.0 / 3.0
-                + z
-                * (
-                    1.0 / 12.0
-                    + z * (-1.0 / 60.0 + z * (1.0 / 360.0 - z / 2520.0))
-                )
+                + z * (1.0 / 12.0 + z * (-1.0 / 60.0 + z * (1.0 / 360.0 - z / 2520.0)))
             )
             z = scaled[~small]
-            response[~small] = (2.0 / z) * (
-                1.0 + np.expm1(-z) / z
-            )
+            response[~small] = (2.0 / z) * (1.0 + np.expm1(-z) / z)
             older_modes = (
                 np.exp(-np.outer(local_step, spectrum.rates))
                 * np.square(older_time[:, None])
                 * response
             )
             observed = older_modes @ spectrum.weights
-            observed += local_weight * (
-                np.square(times) - np.square(older_time)
-            )
+            observed += local_weight * (np.square(times) - np.square(older_time))
             exact = 2.0 * times ** (2.0 - alpha) / gamma(3.0 - alpha)
         elif problem == "exponential":
             shifted_rates = 1.0 + spectrum.rates
@@ -268,11 +254,7 @@ def _relative_error(
             ratio = np.empty_like(scaled)
             small = np.abs(scaled) < 1.0e-3
             x = scaled[small]
-            ratio[small] = (
-                1.0 / 6.0
-                - np.square(x) / 120.0
-                + np.power(x, 4) / 5040.0
-            )
+            ratio[small] = 1.0 / 6.0 - np.square(x) / 120.0 + np.power(x, 4) / 5040.0
             x = scaled[~small]
             ratio[~small] = (x - np.sin(x)) / np.power(x, 3)
             modes = 2.0 * forcing_scale * np.power(times[:, None], 3) * ratio
@@ -283,11 +265,7 @@ def _relative_error(
             normalized_convolution = np.imag(
                 np.expm1(exponent) / (-1.0 + 1j * frequencies[None, :])
             )
-            modes = (
-                forcing_scale
-                * normalized_convolution
-                / frequencies[None, :]
-            )
+            modes = forcing_scale * normalized_convolution / frequencies[None, :]
             observed = modes @ spectrum.weights
             exact = gammainc(1.0 - alpha, times)
         else:
@@ -526,9 +504,7 @@ def _modal_update_workload(
             continue
 
         if interpolant == "quadratic":
-            _, startup_interpolation, _ = recurrence_coefficients(
-                spectrum, time_step
-            )
+            _, startup_interpolation, _ = recurrence_coefficients(spectrum, time_step)
             decay, interpolation, old_interpolation, _, _ = (
                 quadratic_recurrence_coefficients(
                     spectrum,
@@ -537,9 +513,7 @@ def _modal_update_workload(
                 )
             )
         else:
-            decay, interpolation, _ = recurrence_coefficients(
-                spectrum, time_step
-            )
+            decay, interpolation, _ = recurrence_coefficients(spectrum, time_step)
             startup_interpolation = interpolation
             old_interpolation = np.zeros_like(interpolation)
         modes = np.zeros((spectrum.rates.size, field_size))
@@ -550,13 +524,9 @@ def _modal_update_workload(
             modes *= decay[:, None]
             if interpolant == "quadratic" and step > 1:
                 modes += interpolation[:, None] * (current - previous)
-                modes += old_interpolation[:, None] * (
-                    previous - penultimate
-                )
+                modes += old_interpolation[:, None] * (previous - penultimate)
             else:
-                modes += startup_interpolation[:, None] * (
-                    current - previous
-                )
+                modes += startup_interpolation[:, None] * (current - previous)
             penultimate = previous
             previous = current
         checksum += float(np.sum(spectrum.weights @ modes))
@@ -752,9 +722,7 @@ def plot_cost_matched_comparison(
                     else 257
                 ),
             )
-        matched.append(
-            (label, builder(count), color, linestyle, str(count), elapsed)
-        )
+        matched.append((label, builder(count), color, linestyle, str(count), elapsed))
 
     sum_of_exponentials, soe_elapsed, matched_soe_target = (
         _match_sum_of_exponentials_cost(
@@ -767,8 +735,7 @@ def plot_cost_matched_comparison(
         )
     )
     soe_counts = tuple(
-        int(sum_of_exponentials.spectrum(alpha).rates.size)
-        for alpha in (0.1, 0.5, 0.9)
+        int(sum_of_exponentials.spectrum(alpha).rates.size) for alpha in (0.1, 0.5, 0.9)
     )
     soe_count_label = (
         str(soe_counts[0])
@@ -963,15 +930,10 @@ def plot_sum_of_exponentials_refinement(
             )
             spectrum = representation.spectrum(alpha)
             power_weights = (
-                spectrum.weights
-                * spectrum.rates
-                * gamma(1.0 - alpha)
-                / alpha
+                spectrum.weights * spectrum.rates * gamma(1.0 - alpha) / alpha
             )
             observed = np.exp(-np.outer(times, spectrum.rates)) @ power_weights
-            error = float(
-                np.max(np.abs(np.power(times, -1.0 - alpha) - observed))
-            )
+            error = float(np.max(np.abs(np.power(times, -1.0 - alpha) - observed)))
             construction = _median_runtime(
                 lambda representation=representation, alpha=alpha: (
                     representation.spectrum(alpha)
@@ -1179,16 +1141,13 @@ def plot_diethelm2008_refinement(
     """Plot Diethelm2008-2008 error as its Gauss-Jacobi rule is refined."""
     matplotlib, plt = _pyplot()
     if not node_counts or any(
-        isinstance(count, bool) or not 1 <= count <= 256
-        for count in node_counts
+        isinstance(count, bool) or not 1 <= count <= 256 for count in node_counts
     ):
         raise ValueError("node counts must be integers between 1 and 256")
 
     alphas = (0.1, 0.5, 0.9)
     times = np.logspace(-3.0, 3.0, 401)
-    colors = matplotlib.colormaps["viridis"](
-        np.linspace(0.05, 0.95, len(node_counts))
-    )
+    colors = matplotlib.colormaps["viridis"](np.linspace(0.05, 0.95, len(node_counts)))
     figure, axes = plt.subplots(
         2,
         3,
@@ -1293,9 +1252,7 @@ def _parse_node_counts(value: str) -> tuple[int, ...]:
             "node counts must be comma-separated integers"
         ) from error
     if not counts or any(not 1 <= count <= 256 for count in counts):
-        raise argparse.ArgumentTypeError(
-            "node counts must lie between 1 and 256"
-        )
+        raise argparse.ArgumentTypeError("node counts must lie between 1 and 256")
     return counts
 
 
@@ -1304,9 +1261,7 @@ def main() -> None:
     parser.add_argument(
         "--output-directory",
         type=Path,
-        default=(
-            Path(__file__).resolve().parent / "benchmarks-output"
-        ),
+        default=(Path(__file__).resolve().parent / "benchmarks-output"),
     )
     parser.add_argument(
         "--figure-directory",
@@ -1382,7 +1337,9 @@ def main() -> None:
         plot_sum_of_exponentials_refinement(
             figures / "sum-of-exponentials-refinement.png",
             csv_output=exponential_stem.with_suffix(".csv"),
-            targets=(1.0e-2, 1.0e-4) if arguments.smoke else (
+            targets=(1.0e-2, 1.0e-4)
+            if arguments.smoke
+            else (
                 1.0e-2,
                 1.0e-4,
                 1.0e-6,

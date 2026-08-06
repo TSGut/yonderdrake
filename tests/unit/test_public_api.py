@@ -60,12 +60,25 @@ def test_spatial_operators_validate_before_importing_firedrake() -> None:
             0.5,
             extension="periodic",
         )
-    with pytest.raises(ValueError, match="quadrature_rule"):
+    with pytest.raises(ValueError, match="target_quadrature_rule"):
         yonderdrake.RieszFractionalLaplacian(
             None,
             0.5,
-            quadrature_rule="adaptive",
+            target_quadrature_rule="adaptive",
         )
+    with pytest.raises(ValueError, match="source_evaluation"):
+        yonderdrake.RieszFractionalLaplacian(
+            None,
+            0.5,
+            source_evaluation="adaptive",
+        )
+    for degree in (0, 1.5, True):
+        with pytest.raises(ValueError, match="source_quadrature_degree"):
+            yonderdrake.RieszFractionalLaplacian(
+                None,
+                0.5,
+                source_quadrature_degree=degree,
+            )
     with pytest.raises(ValueError, match="compression_tolerance"):
         yonderdrake.RieszFractionalLaplacian(
             None,
@@ -111,14 +124,34 @@ def test_target_signatures_remain_inspectable() -> None:
     assert list(periodic.parameters) == ["u", "s"]
     riesz = inspect.signature(yonderdrake.RieszFractionalLaplacian)
     assert list(riesz.parameters)[:2] == ["u", "s"]
-    assert riesz.parameters["quadrature_degree"].default == 6
-    assert riesz.parameters["quadrature_rule"].default == "boundary"
+    assert riesz.parameters["source_evaluation"].default == "hybrid"
+    assert riesz.parameters["source_quadrature_degree"].default == 6
+    assert riesz.parameters["target_quadrature_degree"].default == 6
+    assert riesz.parameters["target_quadrature_rule"].default == "boundary"
     assert riesz.parameters["assembly"].default == "matfree"
     assert riesz.parameters["compression_tolerance"].default == 1.0e-6
     assert riesz.parameters["admissibility"].default == 1.0
     assert riesz.parameters["leaf_size"].default == 16
     assert riesz.parameters["bcs"].default is None
     assert riesz.parameters["mass_solver_parameters"].default is None
+    assert "quadrature_degree" not in riesz.parameters
+    assert "quadrature_rule" not in riesz.parameters
+
+
+@pytest.mark.unit
+def test_removed_riesz_quadrature_names_raise_type_errors() -> None:
+    with pytest.raises(TypeError, match="quadrature_degree"):
+        yonderdrake.RieszFractionalLaplacian(
+            object(),
+            0.4,
+            quadrature_degree=4,
+        )
+    with pytest.raises(TypeError, match="quadrature_rule"):
+        yonderdrake.RieszFractionalLaplacian(
+            object(),
+            0.4,
+            quadrature_rule="ordinary",
+        )
 
 
 @pytest.mark.unit

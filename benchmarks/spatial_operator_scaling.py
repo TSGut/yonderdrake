@@ -55,9 +55,7 @@ def _mesh_and_population(
     coordinates[:, 1] = vertical * np.sqrt(1.0 - 0.5 * horizontal**2)
     angles = np.arctan2(coordinates[:, 1], coordinates[:, 0])
     shoreline = (
-        1.0
-        + 0.20 * np.cos(5.0 * angles + 0.25)
-        + 0.08 * np.sin(3.0 * angles - 0.4)
+        1.0 + 0.20 * np.cos(5.0 * angles + 0.25) + 0.08 * np.sin(3.0 * angles - 0.4)
     )
     coordinates[:] *= shoreline[:, None]
     space = fd.FunctionSpace(mesh, "CG", field_degree)
@@ -87,14 +85,14 @@ def _measure(
     operator_name: str,
     mesh_resolution: int,
     sinc_truncation_target: float,
-    quadrature_degree: int,
+    target_quadrature_degree: int,
     order: float,
     repeats: int,
     minimum_sample_seconds: float,
     varied_parameter: str,
     field_degree: int,
     riesz_assembly: str,
-    riesz_quadrature_rule: str,
+    riesz_target_quadrature_rule: str,
 ) -> dict[str, Any]:
     from yonderdrake import (
         RieszFractionalLaplacian,
@@ -116,9 +114,7 @@ def _measure(
             bcs=boundary,
             sinc_truncation_target=sinc_truncation_target,
             shift_cache="all",
-            shift_solver_parameters=_shift_solver_parameters(
-                communicator.size
-            ),
+            shift_solver_parameters=_shift_solver_parameters(communicator.size),
         )
     else:
         operator = RieszFractionalLaplacian(
@@ -126,8 +122,8 @@ def _measure(
             order,
             bcs=boundary if order >= 0.5 else None,
             extension="zero",
-            quadrature_degree=quadrature_degree,
-            quadrature_rule=riesz_quadrature_rule,
+            target_quadrature_degree=target_quadrature_degree,
+            target_quadrature_rule=riesz_target_quadrature_rule,
             assembly=riesz_assembly,
         )
     image = fd.assemble(operator)
@@ -179,19 +175,17 @@ def _measure(
         "dofs": population.function_space().dim(),
         "order": order,
         "field_degree": field_degree,
-        "riesz_assembly": (
-            riesz_assembly if operator_name == "riesz" else ""
-        ),
+        "riesz_assembly": (riesz_assembly if operator_name == "riesz" else ""),
         "sinc_truncation_target": (
             sinc_truncation_target if operator_name == "spectral" else ""
         ),
         "sinc_nodes": diagnostics.get("num_nodes", ""),
-        "quadrature_degree": (
-            quadrature_degree if operator_name == "riesz" else ""
+        "target_quadrature_degree": (
+            target_quadrature_degree if operator_name == "riesz" else ""
         ),
-        "quadrature_rule": diagnostics.get("quadrature_rule", ""),
+        "target_quadrature_rule": diagnostics.get("target_quadrature_rule", ""),
         "quadrature_points": diagnostics.get(
-            "quadrature_points_per_cell",
+            "target_quadrature_points_per_cell",
             "",
         ),
         "setup_seconds": setup_seconds,
@@ -212,7 +206,7 @@ def main() -> None:
         "--sinc-truncation-targets",
         default="1e-2,5e-3,2e-3,1e-3,5e-4,1e-4",
     )
-    parser.add_argument("--quadrature-degrees", default="2,4,6,8,10,12")
+    parser.add_argument("--target-quadrature-degrees", default="2,4,6,8,10,12")
     parser.add_argument("--order", type=float, default=0.58)
     parser.add_argument("--field-degree", type=int, choices=(1, 2), default=1)
     parser.add_argument(
@@ -221,7 +215,7 @@ def main() -> None:
         default="matfree",
     )
     parser.add_argument(
-        "--riesz-quadrature-rule",
+        "--riesz-target-quadrature-rule",
         choices=("boundary", "ordinary"),
         default="boundary",
     )
@@ -273,7 +267,7 @@ def main() -> None:
     operators = _names(args.operators)
     resolutions = _integers(args.mesh_resolutions)
     truncation_targets = _floats(args.sinc_truncation_targets)
-    degrees = _integers(args.quadrature_degrees)
+    degrees = _integers(args.target_quadrature_degrees)
     if args.smoke:
         resolutions = [3]
         truncation_targets = [1.0e-2]
@@ -313,7 +307,7 @@ def main() -> None:
                 "warmup",
                 args.field_degree,
                 args.riesz_assembly,
-                args.riesz_quadrature_rule,
+                args.riesz_target_quadrature_rule,
             )
             gc.collect()
             fd.COMM_WORLD.barrier()
@@ -342,7 +336,7 @@ def main() -> None:
                     baseline_resolution,
                     baseline_target,
                     degree,
-                    "quadrature_degree",
+                    "target_quadrature_degree",
                 )
                 for degree in degrees
             ]
@@ -370,7 +364,7 @@ def main() -> None:
                 parameter,
                 args.field_degree,
                 args.riesz_assembly,
-                args.riesz_quadrature_rule,
+                args.riesz_target_quadrature_rule,
             )
             rows.append(row)
             if fd.COMM_WORLD.rank == 0:

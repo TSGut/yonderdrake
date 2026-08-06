@@ -251,9 +251,7 @@ def plot_time_fractional(
     }
     missing = required - rows[0].keys()
     if missing:
-        raise ValueError(
-            f"{csv_path} is missing columns: {', '.join(sorted(missing))}"
-        )
+        raise ValueError(f"{csv_path} is missing columns: {', '.join(sorted(missing))}")
     destination = output_directory or csv_path.parent
     stem = csv_path.stem
     steady = _time_figure(
@@ -290,15 +288,13 @@ def plot_spatial_operators(
         "varied_parameter",
         "h_characteristic",
         "sinc_truncation_target",
-        "quadrature_degree",
+        "target_quadrature_degree",
         "setup_seconds",
         "application_seconds",
     }
     missing = required - rows[0].keys()
     if missing:
-        raise ValueError(
-            f"{csv_path} is missing columns: {', '.join(sorted(missing))}"
-        )
+        raise ValueError(f"{csv_path} is missing columns: {', '.join(sorted(missing))}")
     operators = _ordered_present(rows, "operator", ("spectral", "riesz"))
     figure, axes = plt.subplots(1, 3, figsize=(15.1, 4.7))
 
@@ -349,8 +345,8 @@ def plot_spatial_operators(
         (
             axes[2],
             "riesz",
-            "quadrature_degree",
-            "quadrature_degree",
+            "target_quadrature_degree",
+            "target_quadrature_degree",
             "Riesz target quadrature",
             "Quadrature degree",
             False,
@@ -373,8 +369,7 @@ def plot_spatial_operators(
             row
             for row in rows
             if row["operator"] == operator
-            and row["varied_parameter"]
-            in {varied_parameter, "baseline"}
+            and row["varied_parameter"] in {varied_parameter, "baseline"}
         ]
         for metric, label, color, marker, linestyle in metric_styles:
             x_values, y_values = _pairs(selected, x_field, metric)

@@ -89,8 +89,7 @@ def _power_measurement(
     step_size = fd.Constant(1.0 / num_steps)
     source = fd.Constant(0.0)
     residual = (
-        fd.inner(CaputoDerivative(solution, alpha), test)
-        - fd.inner(source, test)
+        fd.inner(CaputoDerivative(solution, alpha), test) - fd.inner(source, test)
     ) * fd.dx
     stepper = FractionalTimeStepper(
         residual,
@@ -170,9 +169,9 @@ def run_power_study(
             num_steps=step_counts[-1],
             timing_repeats=0,
         )
-        mode_refinement_changes[key] = abs(
-            refined.error - values[-1].error
-        ) / values[-1].error
+        mode_refinement_changes[key] = (
+            abs(refined.error - values[-1].error) / values[-1].error
+        )
     maximum_mode_change = max(mode_refinement_changes.values())
     if maximum_mode_change >= 1.0e-4:
         raise RuntimeError(
@@ -188,11 +187,7 @@ def run_power_study(
     rows: list[dict[str, object]] = []
     for (alpha, power, interpolant), values in measurements.items():
         for index, value in enumerate(values):
-            order = (
-                ""
-                if index == 0
-                else log2(values[index - 1].error / value.error)
-            )
+            order = "" if index == 0 else log2(values[index - 1].error / value.error)
             rows.append(
                 {
                     "study": "power",
@@ -367,10 +362,7 @@ def _mittag_leffler_negative(alpha: float, magnitude: float) -> float:
     for index in range(10000):
         term = (
             (-1.0 if index % 2 else 1.0)
-            * exp(
-                index * log(magnitude)
-                - lgamma(alpha * index + 1.0)
-            )
+            * exp(index * log(magnitude) - lgamma(alpha * index + 1.0))
             if magnitude
             else (1.0 if index == 0 else 0.0)
         )
@@ -404,8 +396,7 @@ def _grading_measurement(
     time = fd.Constant(0.0)
     step_size = fd.Constant(final_time * (1.0 / num_steps) ** grading)
     residual = (
-        fd.inner(CaputoDerivative(solution, alpha), test)
-        + fd.inner(solution, test)
+        fd.inner(CaputoDerivative(solution, alpha), test) + fd.inner(solution, test)
     ) * fd.dx
     stepper = FractionalTimeStepper(
         residual,
@@ -548,16 +539,13 @@ def _auxiliary_measurement(
 
     mesh = fd.UnitIntervalMesh(1)
     space = fd.FunctionSpace(mesh, "CG", 1)
-    solution = fd.Function(space, name="auxiliary_manufactured_power").assign(
-        0.0
-    )
+    solution = fd.Function(space, name="auxiliary_manufactured_power").assign(0.0)
     test = fd.TestFunction(space)
     time = fd.Constant(0.0)
     step_size = fd.Constant(1.0 / num_steps)
     source = fd.Constant(0.0)
     residual = (
-        fd.inner(CaputoDerivative(solution, alpha), test)
-        - fd.inner(source, test)
+        fd.inner(CaputoDerivative(solution, alpha), test) - fd.inner(source, test)
     ) * fd.dx
     stepper = FractionalTimeStepper(
         residual,
@@ -609,9 +597,7 @@ def _auxiliary_scalar_error(
         else 1.0 / (1.0 + 0.5 * arguments)
     )
     transition = (
-        response
-        if scheme == "backward_euler"
-        else (1.0 - 0.5 * arguments) * response
+        response if scheme == "backward_euler" else (1.0 - 0.5 * arguments) * response
     )
     physical_coefficient = float(np.dot(spectrum.weights, response))
     modes = np.zeros(num_modes)
@@ -620,9 +606,7 @@ def _auxiliary_scalar_error(
     for index in range(1, num_steps + 1):
         target_time = index / num_steps
         source = derivative_scale * target_time ** (power - alpha)
-        previous_modal_value = float(
-            np.dot(spectrum.weights * transition, modes)
-        )
+        previous_modal_value = float(np.dot(spectrum.weights * transition, modes))
         increment = (source - previous_modal_value) / physical_coefficient
         solution += increment
         modes = transition * modes + response * increment
@@ -639,9 +623,7 @@ def run_auxiliary_study(
     """Measure both auxiliary schemes with actual-stepper spot checks."""
     import firedrake as fd
 
-    measurements: dict[
-        tuple[float, float, str], list[AuxiliaryMeasurement]
-    ] = {}
+    measurements: dict[tuple[float, float, str], list[AuxiliaryMeasurement]] = {}
     actual_checks: dict[tuple[float, float, str], AuxiliaryMeasurement] = {}
     for alpha in alphas:
         for power in (2.0, alpha):
@@ -674,8 +656,7 @@ def run_auxiliary_study(
                 )
 
     actual_check_changes = {
-        key: abs(actual_checks[key].error - values[-1].error)
-        / values[-1].error
+        key: abs(actual_checks[key].error - values[-1].error) / values[-1].error
         for key, values in measurements.items()
     }
     maximum_actual_change = max(actual_check_changes.values())

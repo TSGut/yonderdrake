@@ -264,9 +264,7 @@ class TetrahedronGeometry:
             if zeros == 1:
                 return "face"
             return "inside"
-        distance = min(
-            _point_triangle_distance_3d(x, face) for face in self.faces
-        )
+        distance = min(_point_triangle_distance_3d(x, face) for face in self.faces)
         if distance <= self.diameter:
             return "outside_near"
         return "outside_far"
@@ -290,8 +288,7 @@ def _point_triangle_distance_3d(point: np.ndarray, triangle: np.ndarray) -> floa
         return float(np.linalg.norm(relative))
 
     vertex_region = (
-        first_projection * fourth_projection
-        - third_projection * second_projection
+        first_projection * fourth_projection - third_projection * second_projection
     )
     if vertex_region <= 0.0 and first_projection >= 0.0 and third_projection <= 0.0:
         parameter = first_projection / (first_projection - third_projection)
@@ -304,16 +301,14 @@ def _point_triangle_distance_3d(point: np.ndarray, triangle: np.ndarray) -> floa
         return float(np.linalg.norm(relative))
 
     edge_region = (
-        fifth_projection * second_projection
-        - first_projection * sixth_projection
+        fifth_projection * second_projection - first_projection * sixth_projection
     )
     if edge_region <= 0.0 and second_projection >= 0.0 and sixth_projection <= 0.0:
         parameter = second_projection / (second_projection - sixth_projection)
         return float(np.linalg.norm(point - (first + parameter * second_edge)))
 
     third_edge_region = (
-        third_projection * sixth_projection
-        - fifth_projection * fourth_projection
+        third_projection * sixth_projection - fifth_projection * fourth_projection
     )
     if (
         third_edge_region <= 0.0
@@ -323,9 +318,7 @@ def _point_triangle_distance_3d(point: np.ndarray, triangle: np.ndarray) -> floa
         parameter = (fourth_projection - third_projection) / (
             fourth_projection - third_projection + fifth_projection - sixth_projection
         )
-        return float(
-            np.linalg.norm(point - (second + parameter * (third - second)))
-        )
+        return float(np.linalg.norm(point - (second + parameter * (third - second))))
 
     denominator = 1.0 / (vertex_region + edge_region + third_edge_region)
     second_coordinate = edge_region * denominator

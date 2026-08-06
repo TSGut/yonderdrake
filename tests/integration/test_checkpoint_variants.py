@@ -602,7 +602,7 @@ def make_spatial_stepper(
             u,
             0.3,
             assembly=option,
-            quadrature_degree=2,
+            target_quadrature_degree=2,
             compression_tolerance=1.0e-8,
             leaf_size=1,
         )

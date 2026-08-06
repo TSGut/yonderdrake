@@ -44,9 +44,7 @@ def triangle_quadrature(degree: int) -> SimplexQuadrature:
             barycentric.append(
                 [1.0 - first - (1.0 - first) * second, first, (1.0 - first) * second]
             )
-            output_weights.append(
-                first_weight * second_weight * (1.0 - first)
-            )
+            output_weights.append(first_weight * second_weight * (1.0 - first))
     barycentric_array = np.asarray(barycentric, dtype=np.float64)
     weight_array = np.asarray(output_weights, dtype=np.float64)
     barycentric_array.setflags(write=False)
@@ -76,9 +74,7 @@ def edge_triangle_quadrature(
 
     count = max(1, ceil((degree + 2) / 2))
     exponent = (
-        -2.0 * order
-        if not zero_trace and order < 0.5
-        else min(0.0, 1.0 - 2.0 * order)
+        -2.0 * order if not zero_trace and order < 0.5 else min(0.0, 1.0 - 2.0 * order)
     )
     radial_nodes, radial_weights = roots_jacobi(
         count,
@@ -111,10 +107,7 @@ def edge_triangle_quadrature(
                 point[right] += (1.0 - radial) * tangent
                 barycentric.append(point)
                 weights.append(
-                    radial_weight
-                    * tangent_weight
-                    * radial ** (-exponent)
-                    / 3.0
+                    radial_weight * tangent_weight * radial ** (-exponent) / 3.0
                 )
 
     barycentric_array = np.asarray(barycentric, dtype=np.float64)
@@ -124,12 +117,8 @@ def edge_triangle_quadrature(
         # Restore quadratic moments after removing the Jacobi weight.
         quadratic = np.sum(barycentric_array**2, axis=1)
         mean = np.sum(weight_array * quadratic) / 0.5
-        denominator = np.sum(
-            weight_array * quadratic * (quadratic - mean)
-        )
-        correction = (
-            0.25 - np.sum(weight_array * quadratic)
-        ) / denominator
+        denominator = np.sum(weight_array * quadratic * (quadratic - mean))
+        correction = (0.25 - np.sum(weight_array * quadratic)) / denominator
         weight_array *= 1.0 + correction * (quadratic - mean)
 
     barycentric_array.setflags(write=False)
@@ -169,11 +158,7 @@ def tetrahedron_quadrature(degree: int) -> SimplexQuadrature:
                     ]
                 )
                 output_weights.append(
-                    first_weight
-                    * second_weight
-                    * third_weight
-                    * first**2
-                    * second
+                    first_weight * second_weight * third_weight * first**2 * second
                 )
     barycentric_array = np.asarray(barycentric, dtype=np.float64)
     weight_array = np.asarray(output_weights, dtype=np.float64)
@@ -204,9 +189,7 @@ def face_tetrahedron_quadrature(
 
     count = max(1, ceil((degree + 3) / 2))
     exponent = (
-        -2.0 * order
-        if not zero_trace and order < 0.5
-        else min(0.0, 1.0 - 2.0 * order)
+        -2.0 * order if not zero_trace and order < 0.5 else min(0.0, 1.0 - 2.0 * order)
     )
     radial_nodes, radial_weights = roots_jacobi(count, 2.0, exponent)
     radial_nodes = 0.5 * (radial_nodes + 1.0)
@@ -230,9 +213,7 @@ def face_tetrahedron_quadrature(
                 point[face_indices] += (1.0 - radial) * face_point
                 barycentric.append(point)
                 output_weights.append(
-                    radial_weight
-                    * face_weight
-                    * radial ** (-exponent)
+                    radial_weight * face_weight * radial ** (-exponent)
                 )
 
     barycentric_array = np.asarray(barycentric, dtype=np.float64)
@@ -240,9 +221,7 @@ def face_tetrahedron_quadrature(
     reference_volume = 1.0 / 6.0
     weight_array *= reference_volume / np.sum(weight_array)
     if field_degree == 2:
-        features = [
-            barycentric_array[:, index] for index in range(4)
-        ]
+        features = [barycentric_array[:, index] for index in range(4)]
         desired = [1.0 / 24.0] * 4
         for left in range(4):
             for right in range(left, 4):

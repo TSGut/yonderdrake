@@ -26,9 +26,8 @@ A_{ij}=\int_\Omega\phi_i(x)(-\Delta)^s\phi_j(x)\,dx ,
 $$
 
 The default boundary-sector Gauss-Jacobi target rule resolves the remaining
-boundary singularity.
-`quadrature_degree` controls it, and `quadrature_rule="ordinary"` selects a
-Duffy tensor-Gauss alternative.
+boundary singularity. `target_quadrature_degree` controls it, and
+`target_quadrature_rule="ordinary"` selects a Duffy tensor-Gauss alternative.
 
 Scope: scalar CG1 or CG2 on affine 2D triangles or 3D tetrahedra, $0<s<1$,
 zero exterior extension. Complete homogeneous `bcs` are **required** for
@@ -59,6 +58,17 @@ with $d_e=(y-x)\cdot n_e$. Quadratic terms reduce to the same family of
 one-dimensional edge integrals. In 3D the corresponding formula uses all four
 tetrahedron faces and the normalization $C_{3,s}$.
 
+`source_evaluation` controls how each simplex source is evaluated:
+
+| Mode | Source action | Use |
+| --- | --- | --- |
+| `hybrid` (default) | exact formula for near and coincident pairs, source-cell Gauss quadrature on admissible far pairs | general use |
+| `endpoint` | exact boundary formula for every source and target pair | reference |
+
+`source_quadrature_degree` controls the Gauss rule for `hybrid` and has no
+numerical effect under `endpoint`. The admissibility parameter determines the
+near and far split.
+
 ## Backends
 
 | Assembly | Storage | Parallel | Use |
@@ -73,6 +83,7 @@ approximation, following
 `admissibility`, and `leaf_size` control it. This is particularly useful in 3D,
 where dense storage and uncompressed pairwise work become expensive quickly.
 
-Quadrature error and compression error are **separate** and must be refined
-separately. `diagnostics()` reports storage, timings, solves, blocks, ranks,
-and achieved compression.
+Source quadrature, target quadrature, and compression have independent error
+controls. `diagnostics()` reports the selected source mode, source and target
+degrees, evaluation counts, storage, timings, solves, blocks, ranks, and
+achieved compression.

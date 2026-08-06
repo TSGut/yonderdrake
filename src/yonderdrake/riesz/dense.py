@@ -8,19 +8,24 @@ from time import perf_counter
 import numpy as np
 from scipy.spatial import ConvexHull
 
+from yonderdrake.riesz.admissibility import _admissible_cells
 from yonderdrake.riesz.geometry import (
     SimplexGeometry,
     TetrahedronGeometry,
     TriangleGeometry,
 )
 from yonderdrake.riesz.outer_quadrature import SimplexQuadrature
+from yonderdrake.riesz.source_evaluation import (
+    PreparedSourcePiece,
+    SourceActionEvaluator,
+    SourceEvaluation,
+)
 from yonderdrake.riesz.triangle_action import (
     AffinePolynomial,
     QuadraticPolynomial,
     SimplexPiece,
     SimplexPolynomial,
     _scaled_piecewise_affine_action_many,
-    riesz_normalization,
 )
 
 
@@ -35,8 +40,8 @@ def local_polynomial_basis(
     if degree not in {1, 2}:
         raise NotImplementedError("Riesz basis supports degree 1 or 2")
     dimension = int(points.shape[1])
-    local_dimension = dimension + 1 if degree == 1 else (
-        (dimension + 1) * (dimension + 2) // 2
+    local_dimension = (
+        dimension + 1 if degree == 1 else ((dimension + 1) * (dimension + 2) // 2)
     )
     if points.shape != (local_dimension, dimension):
         raise ValueError(
@@ -48,10 +53,7 @@ def local_polynomial_basis(
             np.column_stack((np.ones(local_dimension), points)),
             np.eye(local_dimension),
         ).T
-        return tuple(
-            AffinePolynomial(values[0], values[1:])
-            for values in coefficients
-        )
+        return tuple(AffinePolynomial(values[0], values[1:]) for values in coefficients)
     quadratic_columns = [0.5 * points[:, axis] ** 2 for axis in range(dimension)]
     cross_pairs = [
         (left, right)
@@ -68,9 +70,7 @@ def local_polynomial_basis(
     basis = []
     for values in coefficients:
         hessian = np.zeros((dimension, dimension), dtype=np.float64)
-        hessian[np.diag_indices(dimension)] = values[
-            1 + dimension : 1 + 2 * dimension
-        ]
+        hessian[np.diag_indices(dimension)] = values[1 + dimension : 1 + 2 * dimension]
         for value, (left, right) in zip(
             values[1 + 2 * dimension :],
             cross_pairs,
@@ -98,6 +98,7 @@ class RieszMeshData:
     geometries: tuple[SimplexGeometry, ...]
     local_basis: tuple[tuple[SimplexPolynomial, ...], ...]
     supports: tuple[tuple[SimplexPiece, ...], ...]
+    support_cells: tuple[tuple[int, ...], ...]
 
     @property
     def coordinates(self) -> np.ndarray:
@@ -150,8 +151,8 @@ class RieszMeshData:
             raise ValueError(
                 f"Riesz field DOF coordinates must have shape (N, {dimension})"
             )
-        local_dimension = dimension + 1 if degree == 1 else (
-            (dimension + 1) * (dimension + 2) // 2
+        local_dimension = (
+            dimension + 1 if degree == 1 else ((dimension + 1) * (dimension + 2) // 2)
         )
         if (
             field_cell_array.ndim != 2
@@ -167,8 +168,7 @@ class RieszMeshData:
             for cell in geometry_cell_array
         )
         local_basis = tuple(
-            local_polynomial_basis(dof_array[cell], degree)
-            for cell in field_cell_array
+            local_polynomial_basis(dof_array[cell], degree) for cell in field_cell_array
         )
         cell_measure = sum(geometry.measure for geometry in geometries)
         hull_measure = float(ConvexHull(vertex_array).volume)
@@ -180,16 +180,20 @@ class RieszMeshData:
         mutable_supports: list[list[SimplexPiece]] = [
             [] for _ in range(dof_array.shape[0])
         ]
-        for cell, geometry, basis in zip(
-            field_cell_array,
-            geometries,
-            local_basis,
-            strict=True,
+        mutable_support_cells: list[list[int]] = [[] for _ in range(dof_array.shape[0])]
+        for cell_index, (cell, geometry, basis) in enumerate(
+            zip(
+                field_cell_array,
+                geometries,
+                local_basis,
+                strict=True,
+            )
         ):
             for global_index, polynomial in zip(cell, basis, strict=True):
                 mutable_supports[int(global_index)].append(
                     SimplexPiece(geometry, polynomial)
                 )
+                mutable_support_cells[int(global_index)].append(cell_index)
         return cls(
             vertex_coordinates=vertex_array.copy(),
             geometry_cells=geometry_cell_array.copy(),
@@ -199,6 +203,7 @@ class RieszMeshData:
             geometries=geometries,
             local_basis=local_basis,
             supports=tuple(tuple(support) for support in mutable_supports),
+            support_cells=tuple(tuple(cells) for cells in mutable_support_cells),
         )
 
 
@@ -212,58 +217,131 @@ class GalerkinEntryEvaluator:
         quadrature: SimplexQuadrature,
         *,
         cache: bool = False,
+        source_evaluation: SourceEvaluation = "endpoint",
+        source_quadrature_degree: int = 4,
+        admissibility: float = 1.0,
+        pair_admissible: bool | None = None,
+        source_action: SourceActionEvaluator | None = None,
+        prepared_supports: tuple[tuple[PreparedSourcePiece, ...], ...] | None = None,
     ) -> None:
         self.mesh_data = mesh_data
         self.order = order
         self.quadrature = quadrature
         self.cache = cache
+        self.admissibility = admissibility
+        self.pair_admissible = pair_admissible
         self.evaluation_count = 0
         self._entries: dict[tuple[int, int], float] = {}
         dimension = int(mesh_data.dof_coordinates.shape[1])
         if quadrature.dimension != dimension:
             raise ValueError("quadrature dimension must match the Riesz mesh")
-        self._action_scale = riesz_normalization(dimension, order) / (2.0 * order)
-        point_parts: list[list[np.ndarray]] = [[] for _ in mesh_data.supports]
-        weight_parts: list[list[np.ndarray]] = [[] for _ in mesh_data.supports]
-        for cell, geometry, basis in zip(
-            mesh_data.cell_dofs,
-            mesh_data.geometries,
-            mesh_data.local_basis,
-            strict=True,
+        self.source_action = source_action or SourceActionEvaluator(
+            dimension,
+            order,
+            source_evaluation,
+            source_quadrature_degree,
+        )
+        row_parts: list[list[tuple[int, np.ndarray, np.ndarray]]] = [
+            [] for _ in mesh_data.supports
+        ]
+        for cell_index, (cell, geometry, basis) in enumerate(
+            zip(
+                mesh_data.cell_dofs,
+                mesh_data.geometries,
+                mesh_data.local_basis,
+                strict=True,
+            )
         ):
             points = quadrature.barycentric @ geometry.vertices
             weights = geometry.reference_jacobian * quadrature.weights
             for global_index, polynomial in zip(cell, basis, strict=True):
-                point_parts[int(global_index)].append(points)
-                weight_parts[int(global_index)].append(
-                    weights
-                    * np.fromiter(
-                        (polynomial(point) for point in points),
-                        dtype=np.float64,
-                        count=points.shape[0],
+                row_parts[int(global_index)].append(
+                    (
+                        cell_index,
+                        points,
+                        weights
+                        * np.fromiter(
+                            (polynomial(point) for point in points),
+                            dtype=np.float64,
+                            count=points.shape[0],
+                        ),
                     )
                 )
+        self._row_parts = tuple(tuple(parts) for parts in row_parts)
         self._row_points = tuple(
-            np.concatenate(parts, axis=0)
-            if parts
-            else np.empty((0, dimension), dtype=np.float64)
-            for parts in point_parts
+            np.concatenate([part[1] for part in parts], axis=0)
+            for parts in self._row_parts
         )
         self._row_weights = tuple(
-            np.concatenate(parts) if parts else np.empty(0, dtype=np.float64)
-            for parts in weight_parts
+            np.concatenate([part[2] for part in parts]) for parts in self._row_parts
         )
+        if prepared_supports is not None:
+            self.prepared_supports = prepared_supports
+        elif self.source_action.mode == "endpoint":
+            self.prepared_supports = tuple(() for _ in mesh_data.supports)
+        else:
+            self.prepared_supports = tuple(
+                tuple(self.source_action.prepare(piece) for piece in support)
+                for support in mesh_data.supports
+            )
 
     def _evaluate(self, row: int, column: int) -> float:
         self.evaluation_count += 1
-        support = self.mesh_data.supports[column]
-        actions = _scaled_piecewise_affine_action_many(
-            support,
-            self._row_points[row],
-            self.order,
-            self._action_scale,
-        )
-        return float(np.dot(self._row_weights[row], actions))
+        if self.source_action.mode == "endpoint" or (
+            self.source_action.mode == "hybrid" and self.pair_admissible is False
+        ):
+            self.source_action.endpoint_evaluations += len(
+                self.mesh_data.supports[column]
+            )
+            actions = _scaled_piecewise_affine_action_many(
+                self.mesh_data.supports[column],
+                self._row_points[row],
+                self.order,
+                self.source_action.endpoint_scale,
+            )
+            return float(np.dot(self._row_weights[row], actions))
+        total = 0.0
+        for target_cell, points, weights in self._row_parts[row]:
+            actions = np.zeros(points.shape[0], dtype=np.float64)
+            target_geometry = self.mesh_data.geometries[target_cell]
+            endpoint_pieces = []
+            quadrature_sources = []
+            for source_cell, source in zip(
+                self.mesh_data.support_cells[column],
+                self.prepared_supports[column],
+                strict=True,
+            ):
+                admissible = (
+                    self.pair_admissible
+                    if self.pair_admissible is not None
+                    else _admissible_cells(
+                        target_geometry,
+                        source.piece.geometry,
+                        self.admissibility,
+                    )
+                )
+                coincident = target_cell == source_cell
+                if self.source_action.uses_quadrature(
+                    admissible=admissible,
+                    coincident=coincident,
+                ):
+                    quadrature_sources.append(source)
+                else:
+                    endpoint_pieces.append(source.piece)
+            if endpoint_pieces:
+                self.source_action.endpoint_evaluations += len(endpoint_pieces)
+                actions += _scaled_piecewise_affine_action_many(
+                    tuple(endpoint_pieces),
+                    points,
+                    self.order,
+                    self.source_action.endpoint_scale,
+                )
+            actions += self.source_action.quadrature_action_many(
+                tuple(quadrature_sources),
+                points,
+            )
+            total += float(np.dot(weights, actions))
+        return total
 
     def entry(self, row: int, column: int) -> float:
         """Evaluate one target-quadrature matrix entry."""
@@ -312,13 +390,22 @@ class DenseRieszBackend:
         mesh_data: RieszMeshData,
         order: float,
         quadrature: SimplexQuadrature,
+        *,
+        source_evaluation: SourceEvaluation = "endpoint",
+        source_quadrature_degree: int = 4,
+        admissibility: float = 1.0,
     ) -> None:
         self.mesh_data = mesh_data
         self.order = order
         self.quadrature = quadrature
+        self.source_evaluation = source_evaluation
+        self.source_quadrature_degree = source_quadrature_degree
+        self.admissibility = admissibility
         self.matrix: np.ndarray | None = None
         self.assembly_seconds = 0.0
         self.apply_count = 0
+        self._source_endpoint_evaluations = 0
+        self._source_gauss_evaluations = 0
 
     def assemble(self) -> np.ndarray:
         if self.matrix is not None:
@@ -330,8 +417,13 @@ class DenseRieszBackend:
             self.mesh_data,
             self.order,
             self.quadrature,
+            source_evaluation=self.source_evaluation,
+            source_quadrature_degree=self.source_quadrature_degree,
+            admissibility=self.admissibility,
         )
         matrix = evaluator.block(indices, indices)
+        self._source_endpoint_evaluations = evaluator.source_action.endpoint_evaluations
+        self._source_gauss_evaluations = evaluator.source_action.quadrature_evaluations
         self.matrix = matrix
         self.assembly_seconds = perf_counter() - started
         return matrix
@@ -348,9 +440,13 @@ class DenseRieszBackend:
         )
         return {
             "assembly": "dense",
-            "quadrature_degree": self.quadrature.degree,
-            "quadrature_rule": self.quadrature.rule,
-            "quadrature_points_per_cell": self.quadrature.num_points,
+            "source_evaluation": self.source_evaluation,
+            "source_quadrature_degree": self.source_quadrature_degree,
+            "source_endpoint_evaluations": self._source_endpoint_evaluations,
+            "source_gauss_evaluations": self._source_gauss_evaluations,
+            "target_quadrature_degree": self.quadrature.degree,
+            "target_quadrature_rule": self.quadrature.rule,
+            "target_quadrature_points_per_cell": self.quadrature.num_points,
             "stored_entries": int(matrix.size),
             "assembly_seconds": self.assembly_seconds,
             "applications": self.apply_count,

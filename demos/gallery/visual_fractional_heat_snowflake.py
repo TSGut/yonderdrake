@@ -177,8 +177,8 @@ def _simulate(args: argparse.Namespace, destination: Path) -> tuple[HeatData, Pa
         args.order,
         bcs=boundaries["Riesz"] if args.order >= 0.5 else None,
         extension="zero",
-        quadrature_degree=args.quadrature_degree,
-        quadrature_rule=args.quadrature_rule,
+        target_quadrature_degree=args.target_quadrature_degree,
+        target_quadrature_rule=args.target_quadrature_rule,
         assembly="hmatrix",
         compression_tolerance=args.compression_tolerance,
         admissibility=args.admissibility,
@@ -243,8 +243,8 @@ def _simulate(args: argparse.Namespace, destination: Path) -> tuple[HeatData, Pa
             "final_time": args.final_time,
             "mesh": args.mesh.name,
             "snowflake_iterations": args.snowflake_iterations,
-            "quadrature_degree": args.quadrature_degree,
-            "quadrature_rule": args.quadrature_rule,
+            "target_quadrature_degree": args.target_quadrature_degree,
+            "target_quadrature_rule": args.target_quadrature_rule,
             "compression_tolerance": args.compression_tolerance,
             "admissibility": args.admissibility,
             "leaf_size": args.leaf_size,
@@ -274,16 +274,14 @@ def _load(args: argparse.Namespace, path: Path) -> HeatData:
     args.dt = float(saved.metadata["dt"])
     args.final_time = float(saved.metadata["final_time"])
     args.snowflake_iterations = int(saved.metadata["snowflake_iterations"])
-    args.quadrature_degree = int(saved.metadata["quadrature_degree"])
-    args.quadrature_rule = str(
-        saved.metadata.get("quadrature_rule", "ordinary")
+    args.target_quadrature_degree = int(saved.metadata["target_quadrature_degree"])
+    args.target_quadrature_rule = str(
+        saved.metadata.get("target_quadrature_rule", "ordinary")
     )
     args.compression_tolerance = float(saved.metadata["compression_tolerance"])
     args.admissibility = float(saved.metadata["admissibility"])
     args.leaf_size = int(saved.metadata["leaf_size"])
-    args.sinc_truncation_target = float(
-        saved.metadata["sinc_truncation_target"]
-    )
+    args.sinc_truncation_target = float(saved.metadata["sinc_truncation_target"])
     return HeatData(
         coordinates=saved.coordinates,
         cells=saved.cells,
@@ -568,9 +566,9 @@ def main() -> None:
     parser.add_argument("--final-time", type=float, default=0.90)
     parser.add_argument("--order", type=float, default=0.72)
     parser.add_argument("--diffusivity", type=float, default=0.32)
-    parser.add_argument("--quadrature-degree", type=int, default=2)
+    parser.add_argument("--target-quadrature-degree", type=int, default=2)
     parser.add_argument(
-        "--quadrature-rule",
+        "--target-quadrature-rule",
         choices=("boundary", "ordinary"),
         default="boundary",
     )
@@ -592,7 +590,7 @@ def main() -> None:
         if args.mesh is None:
             args.mesh = meshes / "koch-snowflake-smoke.msh"
         args.final_time = 0.04
-        args.quadrature_degree = 2
+        args.target_quadrature_degree = 2
         args.leaf_size = 6
     elif args.mesh is None:
         args.mesh = meshes / "koch-snowflake.msh"

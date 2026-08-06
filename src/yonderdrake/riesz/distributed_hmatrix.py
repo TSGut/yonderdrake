@@ -10,6 +10,7 @@ import numpy as np
 from mpi4py import MPI
 from scipy.spatial import ConvexHull
 
+from yonderdrake.riesz.geometry import SimplexGeometry
 from yonderdrake.riesz.hmatrix import (
     Cluster,
     _aca,
@@ -17,11 +18,23 @@ from yonderdrake.riesz.hmatrix import (
     _build_cluster,
 )
 from yonderdrake.riesz.outer_quadrature import SimplexQuadrature
+from yonderdrake.riesz.source_evaluation import (
+    PreparedSourcePiece,
+    SourceActionEvaluator,
+    SourceEvaluation,
+)
 from yonderdrake.riesz.triangle_action import (
     SimplexPiece,
     _scaled_piecewise_affine_action_many,
     riesz_normalization,
 )
+
+
+@dataclass(frozen=True)
+class DistributedTargetPart:
+    geometry: SimplexGeometry
+    points: np.ndarray
+    weights: np.ndarray
 
 
 @dataclass(frozen=True)
@@ -31,6 +44,7 @@ class DistributedDof:
     support: tuple[SimplexPiece, ...]
     row_points: np.ndarray
     row_weights: np.ndarray
+    row_parts: tuple[DistributedTargetPart, ...]
     support_lower: np.ndarray
     support_upper: np.ndarray
 
@@ -83,6 +97,12 @@ class PairEntryEvaluator:
         rows: tuple[DistributedDof, ...],
         columns: tuple[DistributedDof, ...],
         order: float,
+        *,
+        source_evaluation: SourceEvaluation = "endpoint",
+        source_quadrature_degree: int = 4,
+        pair_admissible: bool = False,
+        source_action: SourceActionEvaluator | None = None,
+        prepared_supports: tuple[tuple[PreparedSourcePiece, ...], ...] | None = None,
     ) -> None:
         self.rows = rows
         self.columns = columns
@@ -90,6 +110,22 @@ class PairEntryEvaluator:
         records = rows or columns
         dimension = int(records[0].coordinate.size) if records else 2
         self.scale = riesz_normalization(dimension, order) / (2.0 * order)
+        self.pair_admissible = pair_admissible
+        self.source_action = source_action or SourceActionEvaluator(
+            dimension,
+            order,
+            source_evaluation,
+            source_quadrature_degree,
+        )
+        if prepared_supports is not None:
+            self.prepared_supports = prepared_supports
+        elif self.source_action.mode == "endpoint":
+            self.prepared_supports = tuple(() for _ in columns)
+        else:
+            self.prepared_supports = tuple(
+                tuple(self.source_action.prepare(piece) for piece in column.support)
+                for column in columns
+            )
         self.evaluation_count = 0
         self._entries: dict[tuple[int, int], float] = {}
 
@@ -100,13 +136,48 @@ class PairEntryEvaluator:
         self.evaluation_count += 1
         row_record = self.rows[key[0]]
         support = self.columns[key[1]].support
-        actions = _scaled_piecewise_affine_action_many(
-            support,
-            row_record.row_points,
-            self.order,
-            self.scale,
-        )
-        value = float(np.dot(row_record.row_weights, actions))
+        if self.source_action.mode == "endpoint" or (
+            self.source_action.mode == "hybrid" and not self.pair_admissible
+        ):
+            self.source_action.endpoint_evaluations += len(support)
+            actions = _scaled_piecewise_affine_action_many(
+                support,
+                row_record.row_points,
+                self.order,
+                self.scale,
+            )
+            value = float(np.dot(row_record.row_weights, actions))
+        else:
+            value = 0.0
+            for target in row_record.row_parts:
+                actions = np.zeros(target.points.shape[0], dtype=np.float64)
+                endpoint_pieces = []
+                quadrature_sources = []
+                for source in self.prepared_supports[key[1]]:
+                    coincident = np.array_equal(
+                        target.geometry.vertices,
+                        source.piece.geometry.vertices,
+                    )
+                    if self.source_action.uses_quadrature(
+                        admissible=self.pair_admissible,
+                        coincident=coincident,
+                    ):
+                        quadrature_sources.append(source)
+                    else:
+                        endpoint_pieces.append(source.piece)
+                if endpoint_pieces:
+                    self.source_action.endpoint_evaluations += len(endpoint_pieces)
+                    actions += _scaled_piecewise_affine_action_many(
+                        tuple(endpoint_pieces),
+                        target.points,
+                        self.order,
+                        self.scale,
+                    )
+                actions += self.source_action.quadrature_action_many(
+                    tuple(quadrature_sources),
+                    target.points,
+                )
+                value += float(np.dot(target.weights, actions))
         self._entries[key] = value
         return value
 
@@ -178,6 +249,7 @@ def distribute_dofs(
         coordinate, pieces = grouped[index]
         point_parts = []
         weight_parts = []
+        row_parts = []
         dimension = int(coordinate.size)
         support_lower = np.full(dimension, np.inf)
         support_upper = np.full(dimension, -np.inf)
@@ -185,14 +257,13 @@ def distribute_dofs(
             points = quadrature.barycentric @ piece.geometry.vertices
             weights = piece.geometry.reference_jacobian * quadrature.weights
             point_parts.append(points)
-            weight_parts.append(
-                weights
-                * np.fromiter(
-                    (piece.polynomial(point) for point in points),
-                    dtype=np.float64,
-                    count=points.shape[0],
-                )
+            row_weights = weights * np.fromiter(
+                (piece.polynomial(point) for point in points),
+                dtype=np.float64,
+                count=points.shape[0],
             )
+            weight_parts.append(row_weights)
+            row_parts.append(DistributedTargetPart(piece.geometry, points, row_weights))
             support_lower = np.minimum(
                 support_lower,
                 np.min(piece.geometry.vertices, axis=0),
@@ -208,6 +279,7 @@ def distribute_dofs(
                 support=tuple(pieces),
                 row_points=np.concatenate(point_parts),
                 row_weights=np.concatenate(weight_parts),
+                row_parts=tuple(row_parts),
                 support_lower=support_lower,
                 support_upper=support_upper,
             )
@@ -228,10 +300,8 @@ def validate_geometry(
         local_measure = sum(
             0.5
             * abs(
-                (vertices[1, 0] - vertices[0, 0])
-                * (vertices[2, 1] - vertices[0, 1])
-                - (vertices[1, 1] - vertices[0, 1])
-                * (vertices[2, 0] - vertices[0, 0])
+                (vertices[1, 0] - vertices[0, 0]) * (vertices[2, 1] - vertices[0, 1])
+                - (vertices[1, 1] - vertices[0, 1]) * (vertices[2, 0] - vertices[0, 0])
             )
             for vertices in cell_vertices
         )
@@ -270,6 +340,8 @@ class DistributedHierarchicalRieszBackend:
         order: float,
         quadrature: SimplexQuadrature,
         *,
+        source_evaluation: SourceEvaluation = "endpoint",
+        source_quadrature_degree: int = 4,
         compression_tolerance: float,
         admissibility: float,
         leaf_size: int,
@@ -278,6 +350,8 @@ class DistributedHierarchicalRieszBackend:
         self.local_dofs = local_dofs
         self.order = order
         self.quadrature = quadrature
+        self.source_evaluation = source_evaluation
+        self.source_quadrature_degree = source_quadrature_degree
         self.compression_tolerance = compression_tolerance
         self.admissibility = admissibility
         self.leaf_size = leaf_size
@@ -296,30 +370,24 @@ class DistributedHierarchicalRieszBackend:
         self._dense_entries = 0
         self._admissible_blocks = 0
         self._near_field_blocks = 0
-        self._exact_entry_evaluations = 0
+        self._entry_evaluations = 0
+        self._source_endpoint_evaluations = 0
+        self._source_gauss_evaluations = 0
         self._far_field_ranks: list[int] = []
         self._build()
 
     def _build(self) -> None:
         started = perf_counter()
         row_root = (
-            _cluster(self.local_dofs, self.leaf_size)
-            if self.local_dofs
-            else None
+            _cluster(self.local_dofs, self.leaf_size) if self.local_dofs else None
         )
         dense_work: list[tuple[int, np.ndarray, np.ndarray, np.ndarray]] = []
         low_rank_work: list[
             tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray]
         ] = []
-        projection_columns: list[list[np.ndarray]] = [
-            [] for _ in range(self.comm.size)
-        ]
-        projection_factors: list[list[np.ndarray]] = [
-            [] for _ in range(self.comm.size)
-        ]
-        near_columns: list[list[np.ndarray]] = [
-            [] for _ in range(self.comm.size)
-        ]
+        projection_columns: list[list[np.ndarray]] = [[] for _ in range(self.comm.size)]
+        projection_factors: list[list[np.ndarray]] = [[] for _ in range(self.comm.size)]
+        near_columns: list[list[np.ndarray]] = [[] for _ in range(self.comm.size)]
 
         for source_rank in range(self.comm.size):
             source_dofs = self.comm.bcast(
@@ -329,16 +397,33 @@ class DistributedHierarchicalRieszBackend:
             if row_root is None or not source_dofs:
                 continue
             column_root = _cluster(source_dofs, self.leaf_size)
-            evaluator = PairEntryEvaluator(
+            source_action = SourceActionEvaluator(
+                int(self.local_dofs[0].coordinate.size),
+                self.order,
+                self.source_evaluation,
+                self.source_quadrature_degree,
+            )
+            near_evaluator = PairEntryEvaluator(
                 self.local_dofs,
                 source_dofs,
                 self.order,
+                pair_admissible=False,
+                source_action=source_action,
+            )
+            far_evaluator = PairEntryEvaluator(
+                self.local_dofs,
+                source_dofs,
+                self.order,
+                pair_admissible=True,
+                source_action=source_action,
+                prepared_supports=near_evaluator.prepared_supports,
             )
 
             def add_blocks(
                 row_cluster: Cluster,
                 column_cluster: Cluster,
-                evaluator: PairEntryEvaluator = evaluator,
+                near_evaluator: PairEntryEvaluator = near_evaluator,
+                far_evaluator: PairEntryEvaluator = far_evaluator,
                 source_rank: int = source_rank,
             ) -> None:
                 if _admissible(
@@ -347,7 +432,7 @@ class DistributedHierarchicalRieszBackend:
                     self.admissibility,
                 ):
                     left, right = _aca(
-                        evaluator,
+                        far_evaluator,
                         row_cluster.indices,
                         column_cluster.indices,
                         self.compression_tolerance,
@@ -370,13 +455,11 @@ class DistributedHierarchicalRieszBackend:
                     self._far_field_ranks.append(int(left.shape[1]))
                     return
                 if row_cluster.is_leaf and column_cluster.is_leaf:
-                    values = evaluator.block(
+                    values = near_evaluator.block(
                         row_cluster.indices,
                         column_cluster.indices,
                     )
-                    near_columns[source_rank].append(
-                        column_cluster.indices.copy()
-                    )
+                    near_columns[source_rank].append(column_cluster.indices.copy())
                     dense_work.append(
                         (
                             source_rank,
@@ -410,7 +493,11 @@ class DistributedHierarchicalRieszBackend:
                     add_blocks(row_cluster, column_cluster.right)
 
             add_blocks(row_root, column_root)
-            self._exact_entry_evaluations += evaluator.evaluation_count
+            self._entry_evaluations += (
+                near_evaluator.evaluation_count + far_evaluator.evaluation_count
+            )
+            self._source_endpoint_evaluations += source_action.endpoint_evaluations
+            self._source_gauss_evaluations += source_action.quadrature_evaluations
 
         requests = []
         near_maps = []
@@ -433,12 +520,8 @@ class DistributedHierarchicalRieszBackend:
             requests.append(
                 CompressionRequest(
                     near_columns=unique_near,
-                    projection_columns=tuple(
-                        projection_columns[source_rank]
-                    ),
-                    projection_factors=tuple(
-                        projection_factors[source_rank]
-                    ),
+                    projection_columns=tuple(projection_columns[source_rank]),
+                    projection_factors=tuple(projection_factors[source_rank]),
                 )
             )
         self._incoming_requests = tuple(self.comm.alltoall(requests))
@@ -446,8 +529,7 @@ class DistributedHierarchicalRieszBackend:
             ResponseLayout(
                 near_size=request.near_columns.size,
                 projection_sizes=tuple(
-                    factor.shape[1]
-                    for factor in request.projection_factors
+                    factor.shape[1] for factor in request.projection_factors
                 ),
             )
             for request in requests
@@ -501,9 +583,9 @@ class DistributedHierarchicalRieszBackend:
                 np.cumsum(self._receive_counts[:-1], dtype=np.int32),
             )
         )
-        local_stored = sum(
-            block.values.size for block in self._dense_blocks
-        ) + sum(block.left.size for block in self._low_rank_blocks)
+        local_stored = sum(block.values.size for block in self._dense_blocks) + sum(
+            block.left.size for block in self._low_rank_blocks
+        )
         local_stored += sum(
             factor.size
             for request in self._incoming_requests
@@ -513,22 +595,20 @@ class DistributedHierarchicalRieszBackend:
         local_dimension = len(self.local_dofs)
         global_dimension = int(self.comm.allreduce(local_dimension))
         self._dense_entries = global_dimension**2
-        self._admissible_blocks = int(
-            self.comm.allreduce(self._admissible_blocks)
+        self._admissible_blocks = int(self.comm.allreduce(self._admissible_blocks))
+        self._near_field_blocks = int(self.comm.allreduce(self._near_field_blocks))
+        self._entry_evaluations = int(self.comm.allreduce(self._entry_evaluations))
+        self._source_endpoint_evaluations = int(
+            self.comm.allreduce(self._source_endpoint_evaluations)
         )
-        self._near_field_blocks = int(
-            self.comm.allreduce(self._near_field_blocks)
-        )
-        self._exact_entry_evaluations = int(
-            self.comm.allreduce(self._exact_entry_evaluations)
+        self._source_gauss_evaluations = int(
+            self.comm.allreduce(self._source_gauss_evaluations)
         )
         all_ranks = self.comm.allgather(self._far_field_ranks)
         self._far_field_ranks = [
             rank for rank_values in all_ranks for rank in rank_values
         ]
-        self.build_seconds = max(
-            self.comm.allgather(perf_counter() - started)
-        )
+        self.build_seconds = max(self.comm.allgather(perf_counter() - started))
 
     def apply_local(self, coefficients: np.ndarray) -> np.ndarray:
         """Apply to the locally owned PETSc coefficient segment."""
@@ -542,9 +622,7 @@ class DistributedHierarchicalRieszBackend:
         for target_rank, request in enumerate(self._incoming_requests):
             offset = int(self._send_displacements[target_rank])
             near_size = request.near_columns.size
-            send_buffer[offset : offset + near_size] = values[
-                request.near_columns
-            ]
+            send_buffer[offset : offset + near_size] = values[request.near_columns]
             offset += near_size
             for columns, factor in zip(
                 request.projection_columns,
@@ -571,32 +649,22 @@ class DistributedHierarchicalRieszBackend:
         )
         result = np.zeros_like(values)
         for dense_block in self._dense_blocks:
-            source_start = int(
-                self._receive_displacements[dense_block.source_rank]
-            )
+            source_start = int(self._receive_displacements[dense_block.source_rank])
             source_values = receive_buffer[
                 source_start : source_start
-                + self._response_layouts[
-                    dense_block.source_rank
-                ].near_size
+                + self._response_layouts[dense_block.source_rank].near_size
             ]
             result[dense_block.rows] += (
-                dense_block.values
-                @ source_values[dense_block.near_positions]
+                dense_block.values @ source_values[dense_block.near_positions]
             )
         for low_rank_block in self._low_rank_blocks:
             start = (
-                int(
-                    self._receive_displacements[
-                        low_rank_block.source_rank
-                    ]
-                )
+                int(self._receive_displacements[low_rank_block.source_rank])
                 + low_rank_block.response_offset
             )
             rank = low_rank_block.left.shape[1]
             result[low_rank_block.rows] += (
-                low_rank_block.left
-                @ receive_buffer[start : start + rank]
+                low_rank_block.left @ receive_buffer[start : start + rank]
             )
         self.apply_count += 1
         self.apply_seconds += perf_counter() - started
@@ -606,18 +674,20 @@ class DistributedHierarchicalRieszBackend:
         return {
             "assembly": "hmatrix",
             "distribution": "rank_block",
-            "quadrature_degree": self.quadrature.degree,
-            "quadrature_rule": self.quadrature.rule,
-            "quadrature_points_per_cell": self.quadrature.num_points,
+            "source_evaluation": self.source_evaluation,
+            "source_quadrature_degree": self.source_quadrature_degree,
+            "source_endpoint_evaluations": self._source_endpoint_evaluations,
+            "source_gauss_evaluations": self._source_gauss_evaluations,
+            "target_quadrature_degree": self.quadrature.degree,
+            "target_quadrature_rule": self.quadrature.rule,
+            "target_quadrature_points_per_cell": self.quadrature.num_points,
             "compression_tolerance": self.compression_tolerance,
             "admissibility": self.admissibility,
             "leaf_size": self.leaf_size,
             "admissible_blocks": self._admissible_blocks,
             "near_field_blocks": self._near_field_blocks,
             "average_far_field_rank": (
-                float(np.mean(self._far_field_ranks))
-                if self._far_field_ranks
-                else 0.0
+                float(np.mean(self._far_field_ranks)) if self._far_field_ranks else 0.0
             ),
             "maximum_far_field_rank": max(
                 self._far_field_ranks,
@@ -625,10 +695,8 @@ class DistributedHierarchicalRieszBackend:
             ),
             "stored_entries": self._stored_entries,
             "dense_entries": self._dense_entries,
-            "compression_ratio": (
-                self._stored_entries / self._dense_entries
-            ),
-            "exact_entry_evaluations": self._exact_entry_evaluations,
+            "compression_ratio": (self._stored_entries / self._dense_entries),
+            "entry_evaluations": self._entry_evaluations,
             "build_seconds": self.build_seconds,
             "applications": self.apply_count,
             "apply_seconds": self.apply_seconds,

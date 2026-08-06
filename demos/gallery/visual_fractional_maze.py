@@ -151,10 +151,7 @@ def _solve(
     ) -> Any:
         field = fd.Function(space, name=name).interpolate(
             fd.exp(
-                -(
-                    (x - float(centre_x)) ** 2
-                    + (y - float(centre_y)) ** 2
-                )
+                -((x - float(centre_x)) ** 2 + (y - float(centre_y)) ** 2)
                 / (2.0 * args.source_width**2)
             )
         )
@@ -228,8 +225,8 @@ def _solve(
         args.order,
         bcs=riesz_boundary,
         extension="zero",
-        quadrature_degree=args.quadrature_degree,
-        quadrature_rule=args.quadrature_rule,
+        target_quadrature_degree=args.target_quadrature_degree,
+        target_quadrature_rule=args.target_quadrature_rule,
         assembly="hmatrix",
         compression_tolerance=args.compression_tolerance,
         admissibility=args.admissibility,
@@ -265,14 +262,11 @@ def _solve(
         bcs=riesz_boundary,
         solver_parameters=external_parameters,
     )
-    domain_volume = float(
-        fd.assemble(fd.Constant(1.0) * fd.dx(domain=mesh))
-    )
+    domain_volume = float(fd.assemble(fd.Constant(1.0) * fd.dx(domain=mesh)))
     for field in (classical, spectral):
         field -= float(fd.assemble(field * fd.dx)) / domain_volume
     steady_values = {
-        name: np.asarray(field.dat.data_ro).copy()
-        for name, field in unknowns.items()
+        name: np.asarray(field.dat.data_ro).copy() for name, field in unknowns.items()
     }
     for field in (*unknowns.values(), *previous.values()):
         field.assign(0.0)
@@ -327,8 +321,7 @@ def _solve(
     }
     times = [0.0]
     snapshots = {
-        name: [np.asarray(field.dat.data_ro).copy()]
-        for name, field in unknowns.items()
+        name: [np.asarray(field.dat.data_ro).copy()] for name, field in unknowns.items()
     }
     maximum_steps = time_grid.size - 1
     history_stride = max(
@@ -351,16 +344,12 @@ def _solve(
             previous[name].assign(field)
         previous_time = current_time
         convergence_error = _collective_relative_steady_error(
-            {
-                name: np.asarray(field.dat.data_ro)
-                for name, field in unknowns.items()
-            },
+            {name: np.asarray(field.dat.data_ro) for name, field in unknowns.items()},
             steady_values,
             communicator,
         )
         converged = (
-            step >= minimum_steps
-            and convergence_error <= args.convergence_tolerance
+            step >= minimum_steps and convergence_error <= args.convergence_tolerance
         )
         if step % history_stride == 0 or converged or step == maximum_steps:
             times.append(current_time)
@@ -425,8 +414,8 @@ def _solve(
             "rows": args.rows,
             "source_width": args.source_width,
             "mesh": args.mesh.name,
-            "quadrature_degree": args.quadrature_degree,
-            "quadrature_rule": args.quadrature_rule,
+            "target_quadrature_degree": args.target_quadrature_degree,
+            "target_quadrature_rule": args.target_quadrature_rule,
             "compression_tolerance": args.compression_tolerance,
             "admissibility": args.admissibility,
             "leaf_size": args.leaf_size,
@@ -449,10 +438,7 @@ def _solve(
         cells,
         times_array,
         {name: saved_fields[name] for name in MODEL_NAMES},
-        {
-            name: saved_fields[f"{name} steady"][0]
-            for name in MODEL_NAMES
-        },
+        {name: saved_fields[f"{name} steady"][0] for name in MODEL_NAMES},
         diagnostics,
     ), data_path
 
@@ -465,7 +451,9 @@ def _load(args: argparse.Namespace, path: Path) -> MazeData:
     args.columns = int(saved.metadata["columns"])
     args.rows = int(saved.metadata["rows"])
     args.source_width = float(saved.metadata["source_width"])
-    args.quadrature_rule = str(saved.metadata.get("quadrature_rule", "boundary"))
+    args.target_quadrature_rule = str(
+        saved.metadata.get("target_quadrature_rule", "boundary")
+    )
     transient_diagnostics = {
         key: saved.metadata[key]
         for key in (
@@ -486,13 +474,9 @@ def _load(args: argparse.Namespace, path: Path) -> MazeData:
         cells=saved.cells,
         times=saved.times,
         fields={name: saved.fields[name] for name in MODEL_NAMES},
-        steady_fields={
-            name: saved.fields[f"{name} steady"][0] for name in MODEL_NAMES
-        },
+        steady_fields={name: saved.fields[f"{name} steady"][0] for name in MODEL_NAMES},
         diagnostics=(
-            {"transient": transient_diagnostics}
-            if transient_diagnostics
-            else {}
+            {"transient": transient_diagnostics} if transient_diagnostics else {}
         ),
     )
 
@@ -516,12 +500,9 @@ def _cell_gradients(
 ) -> tuple[np.ndarray, np.ndarray]:
     points = coordinates[cells]
     differences = values[cells]
-    twice_area = (
-        (points[:, 1, 0] - points[:, 0, 0])
-        * (points[:, 2, 1] - points[:, 0, 1])
-        - (points[:, 2, 0] - points[:, 0, 0])
-        * (points[:, 1, 1] - points[:, 0, 1])
-    )
+    twice_area = (points[:, 1, 0] - points[:, 0, 0]) * (
+        points[:, 2, 1] - points[:, 0, 1]
+    ) - (points[:, 2, 0] - points[:, 0, 0]) * (points[:, 1, 1] - points[:, 0, 1])
     gradient_x = (
         differences[:, 0] * (points[:, 1, 1] - points[:, 2, 1])
         + differences[:, 1] * (points[:, 2, 1] - points[:, 0, 1])
@@ -552,9 +533,7 @@ def _log_scaled(
     if floor <= 0.0 or ceiling <= floor:
         return np.zeros_like(values)
     clipped = np.clip(values, floor, ceiling)
-    scaled = (np.log(clipped) - np.log(floor)) / (
-        np.log(ceiling) - np.log(floor)
-    )
+    scaled = (np.log(clipped) - np.log(floor)) / (np.log(ceiling) - np.log(floor))
     return np.where(values > floor, scaled, 0.0)
 
 
@@ -721,10 +700,7 @@ def _render_animation(
     boundary_segments = _boundary_segments(coordinates, cells)
     gradients = {
         name: np.asarray(
-            [
-                _cell_gradient_magnitude(coordinates, cells, frame)
-                for frame in values
-            ]
+            [_cell_gradient_magnitude(coordinates, cells, frame) for frame in values]
         )
         for name, values in data.fields.items()
     }
@@ -836,9 +812,9 @@ def _render_animation(
             gradient_image.set_array(displayed_gradients[name][frame])
         if frame == 0:
             label = "initial state"
-        elif frame == len(data.times) - 1 and data.diagnostics.get(
-            "transient", {}
-        ).get("converged", False):
+        elif frame == len(data.times) - 1 and data.diagnostics.get("transient", {}).get(
+            "converged", False
+        ):
             label = f"path established at $t={data.times[frame]:.3g}$"
         else:
             label = f"time $t={data.times[frame]:.3g}$"
@@ -873,9 +849,7 @@ def _render_animation(
     durations = []
     for frame in range(rendered.n_frames):
         rendered.seek(frame)
-        durations.append(
-            int(rendered.info.get("duration", round(1000 / args.fps)))
-        )
+        durations.append(int(rendered.info.get("duration", round(1000 / args.fps))))
         frames.append(
             rendered.convert("RGB").resize(
                 (target_width, target_height),
@@ -906,9 +880,9 @@ def main() -> None:
     parser.add_argument("--rows", type=int, default=5)
     parser.add_argument("--order", type=float, default=0.58)
     parser.add_argument("--source-width", type=float, default=0.24)
-    parser.add_argument("--quadrature-degree", type=int, default=2)
+    parser.add_argument("--target-quadrature-degree", type=int, default=2)
     parser.add_argument(
-        "--quadrature-rule",
+        "--target-quadrature-rule",
         choices=("boundary", "ordinary"),
         default="ordinary",
     )
@@ -930,7 +904,7 @@ def main() -> None:
         args.columns = 5
         args.rows = 4
         args.mesh = args.mesh or meshes / "fractional-maze-smoke.msh"
-        args.quadrature_degree = 2
+        args.target_quadrature_degree = 2
         args.leaf_size = 8
         args.sinc_truncation_target = 1.0e-2
         args.frames = 7

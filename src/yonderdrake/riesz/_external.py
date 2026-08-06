@@ -27,6 +27,7 @@ from yonderdrake.riesz.outer_quadrature import (
     tetrahedron_quadrature,
     triangle_quadrature,
 )
+from yonderdrake.riesz.source_evaluation import SourceEvaluation
 from yonderdrake.riesz.triangle_action import SimplexPiece
 
 
@@ -37,8 +38,10 @@ class RieszApplyManager:
         self,
         space: Any,
         order: float,
-        quadrature_degree: int,
-        quadrature_rule: str,
+        source_evaluation: SourceEvaluation,
+        source_quadrature_degree: int,
+        target_quadrature_degree: int,
+        target_quadrature_rule: str,
         assembly: str,
         compression_tolerance: float,
         admissibility: float,
@@ -61,9 +64,9 @@ class RieszApplyManager:
             vertex_space.cell_node_map().values,
             dtype=np.int64,
         )
-        vertex_global_cells = np.asarray(
-            vertex_space.dof_dset.lgmap.indices
-        )[vertex_local_cells]
+        vertex_global_cells = np.asarray(vertex_space.dof_dset.lgmap.indices)[
+            vertex_local_cells
+        ]
         vertex_values = mesh.coordinates.dat.data_ro_with_halos
         dof_coordinate_space = fd.VectorFunctionSpace(mesh, "CG", degree)
         dof_coordinates = fd.Function(dof_coordinate_space).interpolate(
@@ -73,9 +76,7 @@ class RieszApplyManager:
             space.cell_node_map().values,
             dtype=np.int64,
         )
-        field_global_cells = np.asarray(
-            space.dof_dset.lgmap.indices
-        )[field_local_cells]
+        field_global_cells = np.asarray(space.dof_dset.lgmap.indices)[field_local_cells]
         dof_coordinate_values = dof_coordinates.dat.data_ro_with_halos
         owned_cells = int(mesh.cell_set.size)
         vertex_local_cells = vertex_local_cells[:owned_cells]
@@ -105,30 +106,28 @@ class RieszApplyManager:
         if dimension == 2:
             quadrature = (
                 edge_triangle_quadrature(
-                    quadrature_degree,
+                    target_quadrature_degree,
                     order,
                     zero_trace=bool(bcs),
                     field_degree=degree,
                 )
-                if quadrature_rule == "boundary"
-                else triangle_quadrature(quadrature_degree)
+                if target_quadrature_rule == "boundary"
+                else triangle_quadrature(target_quadrature_degree)
             )
             geometry_type = TriangleGeometry
         else:
             quadrature = (
                 face_tetrahedron_quadrature(
-                    quadrature_degree,
+                    target_quadrature_degree,
                     order,
                     zero_trace=bool(bcs),
                     field_degree=degree,
                 )
-                if quadrature_rule == "boundary"
-                else tetrahedron_quadrature(quadrature_degree)
+                if target_quadrature_rule == "boundary"
+                else tetrahedron_quadrature(target_quadrature_degree)
             )
             geometry_type = TetrahedronGeometry
-        self._distributed_hmatrix = (
-            assembly == "hmatrix" and mesh.comm.size > 1
-        )
+        self._distributed_hmatrix = assembly == "hmatrix" and mesh.comm.size > 1
         if self._distributed_hmatrix:
             validate_geometry(
                 mesh.comm,
@@ -173,6 +172,8 @@ class RieszApplyManager:
                 local_dofs,
                 order,
                 quadrature,
+                source_evaluation=source_evaluation,
+                source_quadrature_degree=source_quadrature_degree,
                 compression_tolerance=compression_tolerance,
                 admissibility=admissibility,
                 leaf_size=leaf_size,
@@ -180,9 +181,7 @@ class RieszApplyManager:
         else:
             records_by_rank = mesh.comm.allgather(local_records)
             records = [
-                record
-                for rank_records in records_by_rank
-                for record in rank_records
+                record for rank_records in records_by_rank for record in rank_records
             ]
             global_vertices = np.zeros(
                 (vertex_space.dim(), dimension),
@@ -202,12 +201,12 @@ class RieszApplyManager:
             ) in records:
                 geometry_cells.append(geometry_cell)
                 field_cells.append(field_cell)
-                global_vertices[
-                    np.asarray(geometry_cell, dtype=np.int64)
-                ] = cell_vertices
-                global_dof_coordinates[
-                    np.asarray(field_cell, dtype=np.int64)
-                ] = cell_dof_coordinates
+                global_vertices[np.asarray(geometry_cell, dtype=np.int64)] = (
+                    cell_vertices
+                )
+                global_dof_coordinates[np.asarray(field_cell, dtype=np.int64)] = (
+                    cell_dof_coordinates
+                )
             mesh_data = RieszMeshData.build(
                 global_vertices,
                 geometry_cells,
@@ -216,8 +215,7 @@ class RieszApplyManager:
                 degree=degree,
             )
             target_start = sum(
-                len(records_by_rank[rank])
-                for rank in range(mesh.comm.rank)
+                len(records_by_rank[rank]) for rank in range(mesh.comm.rank)
             )
             self._target_cells = range(
                 target_start,
@@ -228,18 +226,26 @@ class RieszApplyManager:
                     mesh_data,
                     order,
                     quadrature,
+                    source_evaluation=source_evaluation,
+                    source_quadrature_degree=source_quadrature_degree,
+                    admissibility=admissibility,
                 )
             elif assembly == "matfree":
                 self.backend = MatrixFreeRieszBackend(
                     mesh_data,
                     order,
                     quadrature,
+                    source_evaluation=source_evaluation,
+                    source_quadrature_degree=source_quadrature_degree,
+                    admissibility=admissibility,
                 )
             else:
                 self.backend = HierarchicalRieszBackend(
                     mesh_data,
                     order,
                     quadrature,
+                    source_evaluation=source_evaluation,
+                    source_quadrature_degree=source_quadrature_degree,
                     compression_tolerance=compression_tolerance,
                     admissibility=admissibility,
                     leaf_size=leaf_size,
@@ -276,9 +282,7 @@ class RieszApplyManager:
                 vector.assemble()
             self._zero_boundary(result)
             return result
-        coefficient_parts = self._comm.allgather(
-            (start, end, local_values)
-        )
+        coefficient_parts = self._comm.allgather((start, end, local_values))
         coefficients = np.empty(self.space.dim(), dtype=np.float64)
         for part_start, part_end, part_values in coefficient_parts:
             coefficients[part_start:part_end] = part_values
@@ -331,8 +335,10 @@ class RieszExternalOperator(LinearExternalOperator):
         return RieszApplyManager(
             self.function_space(),
             self.operator_data["order"],
-            self.operator_data["quadrature_degree"],
-            self.operator_data["quadrature_rule"],
+            self.operator_data["source_evaluation"],
+            self.operator_data["source_quadrature_degree"],
+            self.operator_data["target_quadrature_degree"],
+            self.operator_data["target_quadrature_rule"],
             self.operator_data["assembly"],
             self.operator_data["compression_tolerance"],
             self.operator_data["admissibility"],
@@ -346,8 +352,14 @@ class RieszExternalOperator(LinearExternalOperator):
         if manager is None:
             return {
                 "assembly": self.operator_data["assembly"],
-                "quadrature_degree": self.operator_data["quadrature_degree"],
-                "quadrature_rule": self.operator_data["quadrature_rule"],
+                "source_evaluation": self.operator_data["source_evaluation"],
+                "source_quadrature_degree": self.operator_data[
+                    "source_quadrature_degree"
+                ],
+                "target_quadrature_degree": self.operator_data[
+                    "target_quadrature_degree"
+                ],
+                "target_quadrature_rule": self.operator_data["target_quadrature_rule"],
                 "compression_tolerance": self.operator_data["compression_tolerance"],
                 "admissibility": self.operator_data["admissibility"],
                 "leaf_size": self.operator_data["leaf_size"],

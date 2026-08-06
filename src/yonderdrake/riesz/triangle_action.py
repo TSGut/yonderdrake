@@ -52,9 +52,7 @@ class QuadraticPolynomial:
         if gradient.shape not in {(2,), (3,)} or not np.all(np.isfinite(gradient)):
             raise ValueError("gradient must be a finite vector of length 2 or 3")
         dimension = gradient.size
-        if hessian.shape != (dimension, dimension) or not np.all(
-            np.isfinite(hessian)
-        ):
+        if hessian.shape != (dimension, dimension) or not np.all(np.isfinite(hessian)):
             raise ValueError(
                 "hessian must be a finite square matrix matching the gradient"
             )
@@ -73,9 +71,7 @@ class QuadraticPolynomial:
     def __call__(self, point: object) -> float:
         x = np.asarray(point, dtype=np.float64)
         return float(
-            self.constant
-            + np.dot(self.gradient, x)
-            + 0.5 * np.dot(x, self.hessian @ x)
+            self.constant + np.dot(self.gradient, x) + 0.5 * np.dot(x, self.hessian @ x)
         )
 
     def gradient_at(self, point: object) -> np.ndarray:
@@ -123,8 +119,7 @@ def combine_polynomials(
         np.zeros(dimension),
     )
     if all(
-        isinstance(polynomial, AffinePolynomial)
-        for polynomial in polynomial_values
+        isinstance(polynomial, AffinePolynomial) for polynomial in polynomial_values
     ):
         return AffinePolynomial(constant, gradient)
     hessian = sum(
@@ -203,9 +198,7 @@ def _line_power_integral_many(
     left_values = np.asarray(left, dtype=np.float64).copy()
     right_values = np.asarray(right, dtype=np.float64).copy()
     distances = np.abs(np.asarray(distance, dtype=np.float64))
-    if not (
-        left_values.shape == right_values.shape == distances.shape
-    ):
+    if not (left_values.shape == right_values.shape == distances.shape):
         raise ValueError("line-integral arrays must have matching shapes")
     signs = np.ones(left_values.shape, dtype=np.float64)
     reversed_limits = right_values < left_values
@@ -223,18 +216,16 @@ def _line_power_integral_many(
         regular_right = right_values[regular]
         regular_distance = distances[regular]
         if abs(exponent - 0.5) <= 8.0 * np.finfo(np.float64).eps:
-            result[regular] = np.arcsinh(
-                regular_right / regular_distance
-            ) - np.arcsinh(regular_left / regular_distance)
+            result[regular] = np.arcsinh(regular_right / regular_distance) - np.arcsinh(
+                regular_left / regular_distance
+            )
         else:
             same_side = regular_left * regular_right > 0.0
             away_from_origin = np.minimum(
                 np.abs(regular_left),
                 np.abs(regular_right),
             )
-            reciprocal = same_side & (
-                regular_distance < 0.25 * away_from_origin
-            )
+            reciprocal = same_side & (regular_distance < 0.25 * away_from_origin)
             if bool(np.any(reciprocal)):
                 power = 1.0 - 2.0 * exponent
                 reciprocal_left = regular_left[reciprocal]
@@ -247,14 +238,13 @@ def _line_power_integral_many(
                         exponent,
                         exponent - 0.5,
                         exponent + 0.5,
-                        -(reciprocal_distance / radii) ** 2,
+                        -((reciprocal_distance / radii) ** 2),
                     )
                     return np.sign(values) * radii**power * transformed / power
 
-                result[regular_indices[reciprocal]] = (
-                    reciprocal_primitive(reciprocal_right)
-                    - reciprocal_primitive(reciprocal_left)
-                )
+                result[regular_indices[reciprocal]] = reciprocal_primitive(
+                    reciprocal_right
+                ) - reciprocal_primitive(reciprocal_left)
             direct = ~reciprocal
             if bool(np.any(direct)):
                 direct_left = regular_left[direct]
@@ -275,8 +265,8 @@ def _line_power_integral_many(
                         )
                     )
 
-                result[regular_indices[direct]] = (
-                    primitive(direct_right) - primitive(direct_left)
+                result[regular_indices[direct]] = primitive(direct_right) - primitive(
+                    direct_left
                 )
 
     zero_distance = ~regular
@@ -297,9 +287,8 @@ def _line_power_integral_many(
                 primitive_values = np.zeros_like(values)
                 nonzero = values != 0.0
                 if abs(power) <= 8.0 * np.finfo(np.float64).eps:
-                    primitive_values[nonzero] = (
-                        np.sign(values[nonzero])
-                        * np.log(np.abs(values[nonzero]))
+                    primitive_values[nonzero] = np.sign(values[nonzero]) * np.log(
+                        np.abs(values[nonzero])
                     )
                 else:
                     primitive_values[nonzero] = (
@@ -309,10 +298,9 @@ def _line_power_integral_many(
                     )
                 return primitive_values
 
-            result[zero_indices[finite]] = (
-                zero_distance_primitive(finite_right)
-                - zero_distance_primitive(finite_left)
-            )
+            result[zero_indices[finite]] = zero_distance_primitive(
+                finite_right
+            ) - zero_distance_primitive(finite_left)
     return signs * result
 
 
@@ -388,9 +376,7 @@ def _piece_boundary_action_many(
             tolerance=geometry.tolerance,
         )
         total += (gradients @ normal) * low
-        if isinstance(polynomial, QuadraticPolynomial) and bool(
-            np.any(away_from_edge)
-        ):
+        if isinstance(polynomial, QuadraticPolynomial) and bool(np.any(away_from_edge)):
             first = _line_first_moment_many(
                 left[away_from_edge],
                 right[away_from_edge],
@@ -414,10 +400,7 @@ def _piece_boundary_action_many(
                 * high[away_from_edge]
             )
             total[away_from_edge] -= (
-                order
-                * distance[away_from_edge]
-                * quadratic
-                / (2.0 * (1.0 - order))
+                order * distance[away_from_edge] * quadratic / (2.0 * (1.0 - order))
             )
     return total
 

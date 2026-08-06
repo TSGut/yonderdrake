@@ -10,8 +10,8 @@ Vary one control at a time and follow the sequence for the operator in use.
 | Sine diffusive memory | Increase mode count $L$ → reduce $\Delta t$ → extend the comparison interval | Full history on the same time grid |
 | Exponential memory | Reduce $\Delta t$ | The preceding timestep |
 | Spectral fractional Laplacian | Tighten `sinc_truncation_target` → refine the mesh | Generalized eigenvalues |
-| Riesz, dense or matrix-free | Increase `quadrature_degree` → refine the mesh | Over-resolved direct energy |
-| Riesz, H-matrix | Increase `quadrature_degree` → lower `compression_tolerance` → refine the mesh | Over-resolved direct energy |
+| Riesz, dense or matrix-free | Increase `target_quadrature_degree` → refine the mesh | Over-resolved direct energy |
+| Riesz, H-matrix | Increase `target_quadrature_degree` → lower `compression_tolerance` → refine the mesh | Over-resolved direct energy |
 | Periodic Fourier fractional Laplacian | Increase the uniform grid resolution | Resolved Fourier modes |
 
 For a time-dependent PDE, refine the time and space controls separately. Keep

@@ -167,7 +167,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--subdivisions", default="2,3,4,5,6,7,8")
     parser.add_argument("--order", type=float, default=0.4)
-    parser.add_argument("--quadrature-degree", type=int, default=2)
+    parser.add_argument("--target-quadrature-degree", type=int, default=2)
     parser.add_argument("--compression-tolerance", type=float, default=1.0e-3)
     parser.add_argument("--admissibility", type=float, default=1.0)
     parser.add_argument("--leaf-size", type=int, default=4)
@@ -200,7 +200,7 @@ def main() -> None:
         parser.error("subdivisions must be positive")
     if not 0.0 < args.order < 1.0:
         parser.error("order must satisfy 0 < order < 1")
-    if args.quadrature_degree < 1 or args.repeats < 1:
+    if args.target_quadrature_degree < 1 or args.repeats < 1:
         parser.error("quadrature degree and repeats must be positive")
     if not 0.0 < args.compression_tolerance < 1.0:
         parser.error("compression tolerance must lie in (0, 1)")
@@ -208,7 +208,7 @@ def main() -> None:
         parser.error("admissibility and leaf size must be positive")
 
     rows: list[dict[str, object]] = []
-    rule = triangle_quadrature(args.quadrature_degree)
+    rule = triangle_quadrature(args.target_quadrature_degree)
     for subdivision in subdivisions:
         coordinates, cells = _separated_squares(subdivision)
         mesh = RieszMeshData.build(coordinates, cells)
@@ -253,7 +253,7 @@ def main() -> None:
                 "dofs": coordinates.shape[0],
                 "cells": cells.shape[0],
                 "order": args.order,
-                "quadrature_degree": args.quadrature_degree,
+                "target_quadrature_degree": args.target_quadrature_degree,
                 "compression_tolerance": args.compression_tolerance,
                 "admissibility": args.admissibility,
                 "leaf_size": args.leaf_size,
@@ -264,8 +264,7 @@ def main() -> None:
                 "hmatrix_apply_seconds": hmatrix_apply_seconds,
                 "compression_ratio": diagnostics["compression_ratio"],
                 "sample_fraction": (
-                    diagnostics["exact_entry_evaluations"]
-                    / diagnostics["dense_entries"]
+                    diagnostics["entry_evaluations"] / diagnostics["dense_entries"]
                 ),
                 "average_far_field_rank": diagnostics["average_far_field_rank"],
                 "maximum_far_field_rank": diagnostics["maximum_far_field_rank"],

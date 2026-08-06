@@ -46,7 +46,9 @@ def distributed_matfree_check(expected_size: int) -> None:
         u,
         0.3,
         assembly="matfree",
-        quadrature_degree=3,
+        source_evaluation="hybrid",
+        source_quadrature_degree=8,
+        target_quadrature_degree=3,
     )
     action = fd.assemble(operator)
     test = fd.TestFunction(space)
@@ -79,22 +81,24 @@ def distributed_hmatrix_check(expected_size: int, degree: int) -> None:
     assert mesh.comm.size == expected_size
     space = fd.FunctionSpace(mesh, "CG", degree)
     x, y = fd.SpatialCoordinate(mesh)
-    u = fd.Function(space).interpolate(
-        0.2 + x * (1.0 - y) + 0.1 * x * y
-    )
+    u = fd.Function(space).interpolate(0.2 + x * (1.0 - y) + 0.1 * x * y)
     reference = fd.assemble(
         RieszFractionalLaplacian(
             u,
             0.3,
             assembly="matfree",
-            quadrature_degree=3,
+            source_evaluation="hybrid",
+            source_quadrature_degree=8,
+            target_quadrature_degree=3,
         )
     )
     operator = RieszFractionalLaplacian(
         u,
         0.3,
         assembly="hmatrix",
-        quadrature_degree=3,
+        source_evaluation="hybrid",
+        source_quadrature_degree=8,
+        target_quadrature_degree=3,
         compression_tolerance=1.0e-8,
         leaf_size=2,
     )
@@ -130,14 +134,18 @@ def distributed_tetrahedral_hmatrix_check(expected_size: int, degree: int) -> No
             source,
             0.3,
             assembly="matfree",
-            quadrature_degree=1,
+            source_evaluation="hybrid",
+            source_quadrature_degree=8,
+            target_quadrature_degree=1,
         )
     )
     operator = RieszFractionalLaplacian(
         source,
         0.3,
         assembly="hmatrix",
-        quadrature_degree=1,
+        source_evaluation="hybrid",
+        source_quadrature_degree=8,
+        target_quadrature_degree=1,
         compression_tolerance=1.0e-8,
         leaf_size=2,
     )

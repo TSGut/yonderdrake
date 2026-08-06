@@ -87,7 +87,7 @@ For $s<1/2$ no boundary trace is required:
 Lu = RieszFractionalLaplacian(u, 0.3)
 ```
 
-This uses `quadrature_degree=6`, the boundary-adapted rule, and the matrix-free
+This uses `target_quadrature_degree=6`, the boundary-adapted rule, and the matrix-free
 backend. The function is extended by zero outside the polygonal or polyhedral
 domain.
 
@@ -112,7 +112,7 @@ Lu = RieszFractionalLaplacian(
 The integral geometry is substantially more expensive in 3D. The H-matrix
 backend is intended for larger meshes because it compresses interactions
 between well-separated basis-function supports. Refine
-`compression_tolerance` separately from `quadrature_degree`.
+`compression_tolerance` separately from `target_quadrature_degree`.
 
 The {ref}`Koch snowflake <fractional-snowflake-gallery>` and
 {ref}`maze <fractional-maze-gallery>` gallery experiments compare this

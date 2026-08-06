@@ -35,7 +35,7 @@ def main() -> None:
         u,
         0.3,
         extension="zero",
-        quadrature_degree=3,
+        target_quadrature_degree=3,
         assembly="matfree",
     )
     residual = (

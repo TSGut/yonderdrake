@@ -17,8 +17,10 @@ def RieszFractionalLaplacian(
     s: Any,
     *,
     extension: str = "zero",
-    quadrature_degree: int = 6,
-    quadrature_rule: str = "boundary",
+    source_evaluation: str = "hybrid",
+    source_quadrature_degree: int = 6,
+    target_quadrature_degree: int = 6,
+    target_quadrature_rule: str = "boundary",
     assembly: str = "matfree",
     compression_tolerance: float = 1.0e-6,
     admissibility: float = 1.0,
@@ -35,16 +37,26 @@ def RieszFractionalLaplacian(
         raise ValueError("s must satisfy 0 < s < 1")
     if extension != "zero":
         raise ValueError("extension must be 'zero'")
-    if quadrature_rule not in {"boundary", "ordinary"}:
-        raise ValueError("quadrature_rule must be 'boundary' or 'ordinary'")
+    if source_evaluation not in {"endpoint", "hybrid"}:
+        raise ValueError(
+            "source_evaluation must be 'endpoint' or 'hybrid'"
+        )
+    if target_quadrature_rule not in {"boundary", "ordinary"}:
+        raise ValueError("target_quadrature_rule must be 'boundary' or 'ordinary'")
     if assembly not in {"dense", "matfree", "hmatrix"}:
         raise ValueError("assembly must be 'dense', 'matfree', or 'hmatrix'")
     if (
-        not isinstance(quadrature_degree, int)
-        or isinstance(quadrature_degree, bool)
-        or quadrature_degree < 1
+        not isinstance(source_quadrature_degree, int)
+        or isinstance(source_quadrature_degree, bool)
+        or source_quadrature_degree < 1
     ):
-        raise ValueError("quadrature_degree must be a positive integer")
+        raise ValueError("source_quadrature_degree must be a positive integer")
+    if (
+        not isinstance(target_quadrature_degree, int)
+        or isinstance(target_quadrature_degree, bool)
+        or target_quadrature_degree < 1
+    ):
+        raise ValueError("target_quadrature_degree must be a positive integer")
     try:
         compression_tolerance = float(compression_tolerance)
     except (TypeError, ValueError) as error:
@@ -95,20 +107,14 @@ def RieszFractionalLaplacian(
         operator_name="the zero-exterior Riesz realization",
     )
     supported_cell = (
-        mesh.geometric_dimension == 2
-        and mesh.ufl_cell().cellname == "triangle"
-    ) or (
-        mesh.geometric_dimension == 3
-        and mesh.ufl_cell().cellname == "tetrahedron"
-    )
+        mesh.geometric_dimension == 2 and mesh.ufl_cell().cellname == "triangle"
+    ) or (mesh.geometric_dimension == 3 and mesh.ufl_cell().cellname == "tetrahedron")
     if not supported_cell:
         raise NotImplementedError(
             "RieszFractionalLaplacian supports affine 2D triangle and "
             "3D tetrahedral meshes only"
         )
-    coordinate_degree = (
-        mesh.coordinates.function_space().ufl_element().degree()
-    )
+    coordinate_degree = mesh.coordinates.function_space().ufl_element().degree()
     degree_values = (
         coordinate_degree
         if isinstance(coordinate_degree, tuple)
@@ -132,8 +138,10 @@ def RieszFractionalLaplacian(
             order=order,
             order_operand=s,
             extension=extension,
-            quadrature_degree=quadrature_degree,
-            quadrature_rule=quadrature_rule,
+            source_evaluation=source_evaluation,
+            source_quadrature_degree=source_quadrature_degree,
+            target_quadrature_degree=target_quadrature_degree,
+            target_quadrature_rule=target_quadrature_rule,
             assembly=assembly,
             compression_tolerance=compression_tolerance,
             admissibility=admissibility,

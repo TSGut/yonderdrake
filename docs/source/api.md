@@ -176,8 +176,9 @@ SpectralFractionalLaplacian(
 
 ```python
 RieszFractionalLaplacian(
-    u, s, *, extension="zero", quadrature_degree=6,
-    quadrature_rule="boundary", assembly="matfree",
+    u, s, *, extension="zero", source_evaluation="hybrid",
+    source_quadrature_degree=6, target_quadrature_degree=6,
+    target_quadrature_rule="boundary", assembly="matfree",
     compression_tolerance=1e-6, admissibility=1.0,
     leaf_size=16, bcs=None, mass_solver_parameters=None,
 )
@@ -188,7 +189,9 @@ RieszFractionalLaplacian(
 | Scope | Scalar CG1 or CG2 on affine 2D triangles or 3D tetrahedra, $0<s<1$, zero exterior extension. |
 | Boundary | Complete homogeneous `bcs` are required for $s\geq1/2$. |
 | Topology | Periodic and overlapping cell geometries are unsupported. |
-| Quadrature | Default `boundary` degree 6 is singularity fitted, using edge sectors in 2D and face sectors in 3D. `ordinary` uses Duffy tensor Gauss. |
+| Source evaluation | `endpoint` applies the exact boundary formula everywhere. `hybrid` keeps it for near and coincident pairs and applies source-cell Gauss quadrature on admissible far pairs. |
+| Source quadrature | `source_quadrature_degree` controls `hybrid`. It is inert under `endpoint`. |
+| Target quadrature | Default `boundary` degree 6 is singularity fitted, using edge sectors in 2D and face sectors in 3D. `ordinary` uses Duffy tensor Gauss. |
 | `matfree` | Uncompressed MPI backend with $O(N^2)$ work and replicated sources. |
 | `dense` | Uncompressed serial reference weak matrix. |
 | `hmatrix` | Serial or distributed hierarchy: uncompressed near field plus ACA-compressed admissible blocks. |
@@ -196,7 +199,7 @@ RieszFractionalLaplacian(
 | Mass solve | Configurable, with CG/Jacobi as the default. |
 | Diagnostics | Storage, timings, solves, blocks, ranks, and compression. |
 
-Treat compression and quadrature as separate errors.
+Refine source quadrature, target quadrature, and compression independently.
 
 ## Periodic Fourier fractional Laplacian
 

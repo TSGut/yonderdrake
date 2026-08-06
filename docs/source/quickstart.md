@@ -149,7 +149,7 @@ Refine one at a time:
 | Time discretization | `dt` | independent of mode count |
 | Spatial discretization | mesh | refine last |
 | Spectral quadrature | `sinc_truncation_target` | sinc model estimate. Mesh controls FE error |
-| Riesz quadrature | `quadrature_degree` | separate from compression tolerance |
+| Riesz quadrature | `target_quadrature_degree` | separate from compression tolerance |
 | Periodic Fourier | uniform grid size | keep represented modes below Nyquist |
 | Algebraic | PETSc tolerances | keep below the discretization error |
 

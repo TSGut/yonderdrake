@@ -187,7 +187,8 @@ def _estimate_candidate_seconds(
         factor = (full_steps / sampled_steps) ** 2
     elif candidate.work_class == "O(N log N)":
         factor = (
-            full_steps * np.log2(max(2, full_steps))
+            full_steps
+            * np.log2(max(2, full_steps))
             / (sampled_steps * np.log2(max(2, sampled_steps)))
         )
     else:
@@ -387,11 +388,9 @@ def _candidate_families(
     families["Lubich CQ"] = [
         _Candidate(
             method="Lubich CQ",
-            builder=lambda order=order, corrections=corrections: (
-                LubichCQ(
-                    order=order,
-                    num_corrections=corrections,
-                )
+            builder=lambda order=order, corrections=corrections: LubichCQ(
+                order=order,
+                num_corrections=corrections,
             ),
             step_size=dt,
             parameters={
@@ -421,13 +420,11 @@ def _candidate_families(
     families["Fast-oblivious CQ"] = [
         _Candidate(
             method="Fast-oblivious CQ",
-            builder=lambda nodes=nodes, direct=direct, dt=dt: (
-                FastObliviousCQ(
-                    target_error=1.0e-3 if nodes == 10 else 1.0e-6,
-                    num_levels=round(final_time / dt).bit_length(),
-                    nodes_per_level=nodes,
-                    direct_steps=direct,
-                )
+            builder=lambda nodes=nodes, direct=direct, dt=dt: FastObliviousCQ(
+                target_error=1.0e-3 if nodes == 10 else 1.0e-6,
+                num_levels=round(final_time / dt).bit_length(),
+                nodes_per_level=nodes,
+                direct_steps=direct,
             ),
             step_size=dt,
             parameters={
@@ -583,8 +580,7 @@ def run_cost_matched_comparison(
         while not feasible and remaining:
             candidate, estimate = remaining.pop(0)
             print(
-                f"  expanding search at predicted ratio "
-                f"{estimate / budget:.3f}",
+                f"  expanding search at predicted ratio {estimate / budget:.3f}",
                 flush=True,
             )
             measurement = _measure_candidate(

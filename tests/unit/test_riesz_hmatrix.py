@@ -148,11 +148,7 @@ def test_hmatrix_matches_dense_across_fractional_orders(order: float) -> None:
     assert diagnostics["compression_ratio"] < 1.0
     blocks = hierarchical.build()
     assert hierarchical.build() is blocks
-    assert all(
-        block.rank >= 0
-        for block in blocks
-        if isinstance(block, LowRankBlock)
-    )
+    assert all(block.rank >= 0 for block in blocks if isinstance(block, LowRankBlock))
     with pytest.raises(ValueError, match="coefficients must have shape"):
         hierarchical.apply(coefficients[:-1])
 
@@ -196,6 +192,34 @@ def test_cg2_hmatrix_matches_dense() -> None:
     )
     assert relative_error(backend.apply(coefficients), reference) < 8.0e-5
     assert backend.diagnostics()["admissible_blocks"] > 0
+
+
+@pytest.mark.verification
+def test_hmatrix_hybrid_routes_near_and_far_blocks() -> None:
+    coordinates, cells = separated_unit_squares(2)
+    mesh = RieszMeshData.build(coordinates, cells)
+    quadrature = triangle_quadrature(5)
+    coefficients = np.random.default_rng(23).standard_normal(mesh.dimension)
+    reference = DenseRieszBackend(
+        mesh,
+        0.4,
+        quadrature,
+        source_evaluation="hybrid",
+        source_quadrature_degree=8,
+    ).apply(coefficients)
+    backend = HierarchicalRieszBackend(
+        mesh,
+        0.4,
+        quadrature,
+        source_evaluation="hybrid",
+        source_quadrature_degree=8,
+        compression_tolerance=1.0e-7,
+        leaf_size=2,
+    )
+    assert relative_error(backend.apply(coefficients), reference) < 8.0e-7
+    diagnostics = backend.diagnostics()
+    assert diagnostics["source_endpoint_evaluations"] > 0
+    assert diagnostics["source_gauss_evaluations"] > 0
 
 
 @pytest.mark.verification

@@ -211,8 +211,7 @@ def _skullball_problem(
     speed_squared = sum(speed**2 * mask for _, mask, speed, _, _ in materials)
     radius_squared = (x + 0.34) ** 2 + (y - 0.08) ** 2
     field = fd.Function(space, name="skullball_pressure").interpolate(
-        1.30 * fd.exp(-72.0 * radius_squared)
-        - 0.52 * fd.exp(-18.0 * radius_squared)
+        1.30 * fd.exp(-72.0 * radius_squared) - 0.52 * fd.exp(-18.0 * radius_squared)
     )
     previous = field.copy(deepcopy=True)
     older = field.copy(deepcopy=True)
@@ -272,8 +271,7 @@ def _cases(
 ) -> list[tuple[int, float, int, str]]:
     if sweep == "cartesian":
         return [
-            (*case, "cartesian")
-            for case in itertools.product(levels, timesteps, nodes)
+            (*case, "cartesian") for case in itertools.product(levels, timesteps, nodes)
         ]
     baseline = (
         levels[len(levels) // 2],
@@ -290,9 +288,7 @@ def _cases(
     unique: dict[tuple[int, float, int], str] = {}
     for level, timestep, count, parameter in cases:
         key = (level, timestep, count)
-        unique[key] = (
-            "baseline" if key == baseline else parameter
-        )
+        unique[key] = "baseline" if key == baseline else parameter
     return [(*key, parameter) for key, parameter in unique.items()]
 
 
@@ -373,10 +369,7 @@ def _run_case(
         "L": nodes,
         "fractional_terms": problem.fractional_terms,
         "history_fields": problem.fractional_terms * nodes,
-        "history_bytes": problem.fractional_terms
-        * nodes
-        * problem.space.dim()
-        * 8,
+        "history_bytes": problem.fractional_terms * nodes * problem.space.dim() * 8,
         "minimum_steps_per_sample": steps,
         "minimum_simulated_duration": steps * step_size,
         "minimum_sample_seconds": minimum_sample_seconds,

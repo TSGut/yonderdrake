@@ -102,9 +102,7 @@ def _face_moments_many(
             relative = source_points - points[index]
             squared_distance = np.einsum("ij,ij->i", relative, relative)
             if float(np.min(squared_distance)) == 0.0:
-                raise SingularPointError(
-                    "target lies on a tetrahedron support face"
-                )
+                raise SingularPointError("target lies on a tetrahedron support face")
             low_kernel = squared_distance ** (-low_exponent)
             low_total[index] = float(np.dot(surface_weights, low_kernel))
             if hessian is not None:
@@ -125,8 +123,7 @@ def _face_moments_many(
         right_relative = right[None, :] - projections
         vectors = (
             left_relative[:, None, :]
-            + nodes[None, :, None]
-            * (right_relative - left_relative)[:, None, :]
+            + nodes[None, :, None] * (right_relative - left_relative)[:, None, :]
         )
         signed_jacobians = np.einsum(
             "ij,j->i",
@@ -221,16 +218,11 @@ def _tetrahedron_piece_action_many_unchecked(
         trace_boundary += signed_distances * low
         hessian_boundary += hessian_moment
 
-    result = (
-        values_at_points * high_boundary / (2.0 * order)
-        + gradient_boundary / beta
-    )
+    result = values_at_points * high_boundary / (2.0 * order) + gradient_boundary / beta
     if hessian is not None:
         result += hessian_boundary / (2.0 * beta)
         result -= (
-            float(np.trace(hessian))
-            * trace_boundary
-            / (4.0 * beta * (1.0 - order))
+            float(np.trace(hessian)) * trace_boundary / (4.0 * beta * (1.0 - order))
         )
     return riesz_normalization(3, order) * result
 
@@ -300,11 +292,7 @@ def tetrahedron_action_many(
 ) -> np.ndarray:
     """Evaluate a tetrahedron-supported polynomial over target points."""
     targets = np.asarray(points, dtype=np.float64)
-    if (
-        targets.ndim != 2
-        or targets.shape[1] != 3
-        or not np.all(np.isfinite(targets))
-    ):
+    if targets.ndim != 2 or targets.shape[1] != 3 or not np.all(np.isfinite(targets)):
         raise ValueError("points must be a finite array with shape (num_points, 3)")
     if polynomial.gradient.shape != (3,):
         raise ValueError("tetrahedron polynomial must be three-dimensional")

@@ -94,7 +94,7 @@ def test_caputo_riesz_zero_exterior_decay() -> None:
     spatial = RieszFractionalLaplacian(
         u,
         0.3,
-        quadrature_degree=3,
+        target_quadrature_degree=3,
         assembly="matfree",
     )
     residual = (
@@ -125,7 +125,7 @@ def unit_disk_riesz_error(refinement_level: int) -> float:
     operator = RieszFractionalLaplacian(
         u,
         order,
-        quadrature_degree=5,
+        target_quadrature_degree=5,
         assembly="dense",
     )
     fd.assemble(operator)

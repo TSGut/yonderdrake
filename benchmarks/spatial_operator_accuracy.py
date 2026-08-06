@@ -61,9 +61,7 @@ def _spectral_rows(targets: list[float], order: float) -> list[dict[str, object]
                 "operator": "spectral",
                 "control": "sinc_truncation_target",
                 "control_value": target,
-                "relative_error": float(
-                    np.max(np.abs(approximation / exact - 1.0))
-                ),
+                "relative_error": float(np.max(np.abs(approximation / exact - 1.0))),
                 "reference": "analytic scalar eigenvalue power",
                 "reference_control": "",
                 "order": order,
@@ -97,7 +95,7 @@ def _riesz_rows(
     return [
         {
             "operator": "riesz",
-            "control": "quadrature_degree",
+            "control": "target_quadrature_degree",
             "control_value": degree,
             "relative_error": float(
                 np.linalg.norm(
@@ -183,8 +181,8 @@ def main() -> None:
         "--sinc-targets",
         default="1e-2,5e-3,2e-3,1e-3,5e-4,2e-4,1e-4",
     )
-    parser.add_argument("--quadrature-degrees", default="2,4,6,8,10,12")
-    parser.add_argument("--reference-quadrature-degree", type=int, default=18)
+    parser.add_argument("--target-quadrature-degrees", default="2,4,6,8,10,12")
+    parser.add_argument("--reference-target-quadrature-degree", type=int, default=18)
     parser.add_argument("--order", type=float, default=0.58)
     parser.add_argument(
         "--output",
@@ -207,16 +205,16 @@ def main() -> None:
     if not args.no_plots and find_spec("matplotlib") is None:
         parser.error("plot output requires `python -m pip install -e '.[visual]'`")
     targets = _floats(args.sinc_targets)
-    degrees = _integers(args.quadrature_degrees)
+    degrees = _integers(args.target_quadrature_degrees)
     if args.smoke:
         targets = [1.0e-2]
         degrees = [2]
-        args.reference_quadrature_degree = 4
+        args.reference_target_quadrature_degree = 4
     if not targets or min(targets) <= 0.0:
         parser.error("sinc targets must be positive")
     if not degrees or min(degrees) < 1:
         parser.error("quadrature degrees must be positive")
-    if args.reference_quadrature_degree <= max(degrees):
+    if args.reference_target_quadrature_degree <= max(degrees):
         parser.error("reference quadrature degree must exceed measured degrees")
     if not 0.0 < args.order < 1.0:
         parser.error("order must lie in (0, 1)")
@@ -227,7 +225,7 @@ def main() -> None:
         *_spectral_rows(targets, args.order),
         *_riesz_rows(
             degrees,
-            args.reference_quadrature_degree,
+            args.reference_target_quadrature_degree,
             args.order,
         ),
     ]
