@@ -29,7 +29,7 @@ class PreparedSourcePiece:
 
 
 class SourceActionEvaluator:
-    """Route one simplex source through endpoint or Gaussian evaluation."""
+    """Route one simplex source according to the source-evaluation policy."""
 
     def __init__(
         self,
@@ -93,14 +93,25 @@ class SourceActionEvaluator:
             admissible=admissible,
             coincident=coincident,
         ):
-            self.endpoint_evaluations += 1
-            return _scaled_piecewise_affine_action_many(
-                (source.piece,),
-                points,
-                self.order,
-                self.endpoint_scale,
-            )
+            return self.boundary_action_many((source.piece,), points)
         return self.quadrature_action_many((source,), points)
+
+    def boundary_action_many(
+        self,
+        pieces: tuple[SimplexPiece, ...],
+        targets: np.ndarray,
+    ) -> np.ndarray:
+        """Evaluate source pieces after reduction to their boundaries."""
+        self.endpoint_evaluations += len(pieces)
+        return _scaled_piecewise_affine_action_many(
+            pieces,
+            np.asarray(targets, dtype=np.float64),
+            self.order,
+            self.endpoint_scale,
+            tetrahedron_edge_evaluation=(
+                "automatic" if self.mode == "hybrid" else "appell"
+            ),
+        )
 
     def uses_quadrature(self, *, admissible: bool, coincident: bool) -> bool:
         """Return whether one source pair follows the Gaussian route."""

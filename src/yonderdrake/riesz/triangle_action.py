@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 from math import gamma, isfinite, pi
+from typing import Literal
 
 import numpy as np
 from scipy.special import hyp2f1
@@ -536,6 +537,8 @@ def _scaled_piecewise_affine_action_many(
     points: np.ndarray,
     order: float,
     scale: float,
+    *,
+    tetrahedron_edge_evaluation: Literal["automatic", "appell"] = "appell",
 ) -> np.ndarray:
     """Evaluate a piecewise polynomial on a batch of interior targets."""
     if pieces and int(pieces[0].geometry.dimension) == 3:
@@ -549,6 +552,7 @@ def _scaled_piecewise_affine_action_many(
                 piece,
                 points,
                 order,
+                edge_evaluation=tetrahedron_edge_evaluation,
             )
         return result
     result = np.zeros(points.shape[0], dtype=np.float64)

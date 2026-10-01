@@ -37,13 +37,13 @@ rejected.
 
 ## Simplex-supported source action
 
-Yonderdrake removes the source singularity analytically before quadrature. For
-a CG1 or CG2 polynomial on one affine simplex, extended by zero, the divergence
+For a CG1 or CG2 polynomial on one affine simplex, extended by zero, the
+endpoint route removes the source singularity analytically. The divergence
 theorem reduces the volume integral to its boundary. Triangle sources reduce
 to analytic edge integrals. Tetrahedral sources reduce to triangular-face
-integrals whose radial direction is integrated analytically and whose
-tangential direction uses Gaussian quadrature. For an affine triangle
-polynomial $p$,
+integrals whose radial direction is integrated analytically as their remaining
+edge integrals have Appell $F_1$ primitives. For an affine triangle polynomial
+$p$,
 
 $$
 (-\Delta)^s(p1_T)(x)
@@ -62,12 +62,23 @@ tetrahedron faces and the normalization $C_{3,s}$.
 
 | Mode | Source action | Use |
 | --- | --- | --- |
-| `hybrid` (default) | exact formula for near and coincident pairs, source-cell Gauss quadrature on admissible far pairs | general use |
-| `endpoint` | exact boundary formula for every source and target pair | reference |
+| `hybrid` (default) | automatically choose source quadrature, edge quadrature, or an analytic endpoint formula | general use |
+| `endpoint` | analytic boundary formula for every source and target pair | reference |
 
 `source_quadrature_degree` controls the Gauss rule for `hybrid` and has no
 numerical effect under `endpoint`. The admissibility parameter determines the
-near and far split.
+near and far split. At a high level, `hybrid` uses:
+
+```text
+2D
+├─ well-separated → source-simplex quadrature
+└─ near/coincident → analytic edge formula
+
+3D
+├─ well-separated → source-simplex quadrature
+├─ moderately separated → boundary reduction + edge quadrature
+└─ poorly separated → boundary reduction + analytic Appell formula
+```
 
 ## Backends
 

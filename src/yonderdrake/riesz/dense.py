@@ -25,7 +25,6 @@ from yonderdrake.riesz.triangle_action import (
     QuadraticPolynomial,
     SimplexPiece,
     SimplexPolynomial,
-    _scaled_piecewise_affine_action_many,
 )
 
 
@@ -290,14 +289,9 @@ class GalerkinEntryEvaluator:
         if self.source_action.mode == "endpoint" or (
             self.source_action.mode == "hybrid" and self.pair_admissible is False
         ):
-            self.source_action.endpoint_evaluations += len(
-                self.mesh_data.supports[column]
-            )
-            actions = _scaled_piecewise_affine_action_many(
+            actions = self.source_action.boundary_action_many(
                 self.mesh_data.supports[column],
                 self._row_points[row],
-                self.order,
-                self.source_action.endpoint_scale,
             )
             return float(np.dot(self._row_weights[row], actions))
         total = 0.0
@@ -329,12 +323,9 @@ class GalerkinEntryEvaluator:
                 else:
                     endpoint_pieces.append(source.piece)
             if endpoint_pieces:
-                self.source_action.endpoint_evaluations += len(endpoint_pieces)
-                actions += _scaled_piecewise_affine_action_many(
+                actions += self.source_action.boundary_action_many(
                     tuple(endpoint_pieces),
                     points,
-                    self.order,
-                    self.source_action.endpoint_scale,
                 )
             actions += self.source_action.quadrature_action_many(
                 tuple(quadrature_sources),

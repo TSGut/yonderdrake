@@ -23,11 +23,7 @@ from yonderdrake.riesz.source_evaluation import (
     SourceActionEvaluator,
     SourceEvaluation,
 )
-from yonderdrake.riesz.triangle_action import (
-    SimplexPiece,
-    _scaled_piecewise_affine_action_many,
-    riesz_normalization,
-)
+from yonderdrake.riesz.triangle_action import SimplexPiece
 
 
 @dataclass(frozen=True)
@@ -109,7 +105,6 @@ class PairEntryEvaluator:
         self.order = order
         records = rows or columns
         dimension = int(records[0].coordinate.size) if records else 2
-        self.scale = riesz_normalization(dimension, order) / (2.0 * order)
         self.pair_admissible = pair_admissible
         self.source_action = source_action or SourceActionEvaluator(
             dimension,
@@ -139,12 +134,9 @@ class PairEntryEvaluator:
         if self.source_action.mode == "endpoint" or (
             self.source_action.mode == "hybrid" and not self.pair_admissible
         ):
-            self.source_action.endpoint_evaluations += len(support)
-            actions = _scaled_piecewise_affine_action_many(
+            actions = self.source_action.boundary_action_many(
                 support,
                 row_record.row_points,
-                self.order,
-                self.scale,
             )
             value = float(np.dot(row_record.row_weights, actions))
         else:
@@ -166,12 +158,9 @@ class PairEntryEvaluator:
                     else:
                         endpoint_pieces.append(source.piece)
                 if endpoint_pieces:
-                    self.source_action.endpoint_evaluations += len(endpoint_pieces)
-                    actions += _scaled_piecewise_affine_action_many(
+                    actions += self.source_action.boundary_action_many(
                         tuple(endpoint_pieces),
                         target.points,
-                        self.order,
-                        self.scale,
                     )
                 actions += self.source_action.quadrature_action_many(
                     tuple(quadrature_sources),

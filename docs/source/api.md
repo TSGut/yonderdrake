@@ -189,7 +189,7 @@ RieszFractionalLaplacian(
 | Scope | Scalar CG1 or CG2 on affine 2D triangles or 3D tetrahedra, $0<s<1$, zero exterior extension. |
 | Boundary | Complete homogeneous `bcs` are required for $s\geq1/2$. |
 | Topology | Periodic and overlapping cell geometries are unsupported. |
-| Source evaluation | `endpoint` applies the exact boundary formula everywhere. `hybrid` keeps it for near and coincident pairs and applies source-cell Gauss quadrature on admissible far pairs. |
+| Source evaluation | `endpoint` applies analytic boundary formulas everywhere. `hybrid` uses source-cell Gauss quadrature on admissible far pairs and near 3D pairs uses boundary reduction with edge quadrature or Appell $F_1$ according to projected separation. |
 | Source quadrature | `source_quadrature_degree` controls `hybrid`. It is inert under `endpoint`. |
 | Target quadrature | Default `boundary` degree 6 is singularity fitted, using edge sectors in 2D and face sectors in 3D. `ordinary` uses Duffy tensor Gauss. |
 | `matfree` | Uncompressed MPI backend with $O(N^2)$ work and replicated sources. |

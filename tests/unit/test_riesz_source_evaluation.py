@@ -6,10 +6,10 @@ import numpy as np
 import pytest
 
 from yonderdrake.riesz.dense import DenseRieszBackend, RieszMeshData
-from yonderdrake.riesz.geometry import TriangleGeometry
+from yonderdrake.riesz.geometry import TetrahedronGeometry, TriangleGeometry
 from yonderdrake.riesz.matfree import MatrixFreeRieszBackend
 from yonderdrake.riesz.outer_quadrature import triangle_quadrature
-from yonderdrake.riesz.source_evaluation import SourceActionEvaluator
+from yonderdrake.riesz.source_evaluation import SourceActionEvaluator, SourceEvaluation
 from yonderdrake.riesz.triangle_action import AffinePolynomial, SimplexPiece
 
 
@@ -18,6 +18,16 @@ def source_piece() -> SimplexPiece:
     return SimplexPiece(
         geometry,
         AffinePolynomial(0.7, np.array([0.2, -0.1])),
+    )
+
+
+def tetrahedron_source_piece() -> SimplexPiece:
+    geometry = TetrahedronGeometry.from_vertices(
+        [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+    )
+    return SimplexPiece(
+        geometry,
+        AffinePolynomial(0.7, np.array([0.2, -0.1, 0.3])),
     )
 
 
@@ -86,6 +96,60 @@ def test_hybrid_uses_endpoint_evaluation_for_coincident_support() -> None:
     )
     np.testing.assert_array_equal(actual, expected)
     assert hybrid.quadrature_evaluations == 0
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("mode", "expected_edge_evaluation"),
+    [("endpoint", "appell"), ("hybrid", "automatic")],
+)
+def test_three_dimensional_boundary_route_follows_source_evaluation(
+    mode: SourceEvaluation,
+    expected_edge_evaluation: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+
+    def fake_action(
+        piece: SimplexPiece,
+        points: np.ndarray,
+        order: float,
+        *,
+        edge_evaluation: str = "appell",
+    ) -> np.ndarray:
+        del piece, order
+        calls.append(edge_evaluation)
+        return np.zeros(points.shape[0])
+
+    monkeypatch.setattr(
+        "yonderdrake.riesz.tetrahedron_action."
+        "_tetrahedron_piece_action_many_unchecked",
+        fake_action,
+    )
+    evaluator = SourceActionEvaluator(3, 0.4, mode, 8)
+    piece = tetrahedron_source_piece()
+    evaluator.action(
+        evaluator.prepare(piece),
+        np.array([[0.3, 0.2, 0.1]]),
+        admissible=False,
+        coincident=False,
+    )
+    assert calls == [expected_edge_evaluation]
+
+
+@pytest.mark.unit
+def test_three_dimensional_hybrid_keeps_source_quadrature_for_far_pairs() -> None:
+    evaluator = SourceActionEvaluator(3, 0.4, "hybrid", 8)
+    piece = tetrahedron_source_piece()
+    result = evaluator.action(
+        evaluator.prepare(piece),
+        np.array([[4.0, 3.0, 5.0]]),
+        admissible=True,
+        coincident=False,
+    )
+    assert np.all(np.isfinite(result))
+    assert evaluator.quadrature_evaluations == 1
+    assert evaluator.endpoint_evaluations == 0
 
 
 @pytest.mark.unit
