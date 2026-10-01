@@ -1,4 +1,4 @@
-"""Endpoint and Gaussian source actions for the Riesz operator."""
+"""Endpoint and Gaussian source actions for the Riesz fractional Laplacian operator."""
 
 from __future__ import annotations
 
@@ -128,12 +128,28 @@ class SourceActionEvaluator:
             return np.zeros(points.shape[0], dtype=np.float64)
         source_points = np.concatenate([source.points for source in sources])
         weighted_values = np.concatenate([source.weighted_values for source in sources])
-        differences = points[:, None, :] - source_points[None, :, :]
-        squared_distances = np.einsum(
-            "ijk,ijk->ij",
-            differences,
-            differences,
+        origin = points[0] if points.shape[0] else source_points[0]
+        centered_points = points - origin
+        centered_sources = source_points - origin
+        target_norms = np.einsum("ij,ij->i", centered_points, centered_points)
+        source_norms = np.einsum("ij,ij->i", centered_sources, centered_sources)
+        squared_distances = (
+            target_norms[:, None]
+            + source_norms[None, :]
+            - 2.0 * (centered_points @ centered_sources.T)
         )
+        cancellation_scale = target_norms[:, None] + source_norms[None, :]
+        cancellation = squared_distances <= (
+            32.0 * np.finfo(np.float64).eps * cancellation_scale
+        )
+        if bool(np.any(cancellation)):
+            target_indices, source_indices = np.nonzero(cancellation)
+            differences = points[target_indices] - source_points[source_indices]
+            squared_distances[target_indices, source_indices] = np.einsum(
+                "ij,ij->i",
+                differences,
+                differences,
+            )
         if bool(np.any(squared_distances == 0.0)):
             raise SingularPointError(
                 "source quadrature encountered a coincident target point"

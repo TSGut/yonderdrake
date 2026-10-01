@@ -9,7 +9,11 @@ from yonderdrake.riesz.dense import DenseRieszBackend, RieszMeshData
 from yonderdrake.riesz.geometry import TetrahedronGeometry, TriangleGeometry
 from yonderdrake.riesz.matfree import MatrixFreeRieszBackend
 from yonderdrake.riesz.outer_quadrature import triangle_quadrature
-from yonderdrake.riesz.source_evaluation import SourceActionEvaluator, SourceEvaluation
+from yonderdrake.riesz.source_evaluation import (
+    PreparedSourcePiece,
+    SourceActionEvaluator,
+    SourceEvaluation,
+)
 from yonderdrake.riesz.triangle_action import AffinePolynomial, SimplexPiece
 
 
@@ -150,6 +154,29 @@ def test_three_dimensional_hybrid_keeps_source_quadrature_for_far_pairs() -> Non
     assert np.all(np.isfinite(result))
     assert evaluator.quadrature_evaluations == 1
     assert evaluator.endpoint_evaluations == 0
+
+
+@pytest.mark.unit
+def test_source_quadrature_is_stable_under_large_coordinate_offsets() -> None:
+    evaluator = SourceActionEvaluator(3, 0.4, "hybrid", 8)
+    source = evaluator.prepare(tetrahedron_source_piece())
+    offset = np.array([1.0e6, -2.0e6, 0.5e6])
+    translated = PreparedSourcePiece(
+        source.piece,
+        source.points + offset,
+        source.weighted_values,
+    )
+    targets = np.array([[4.0, 3.0, 5.0], [6.0, -2.0, 3.0]]) + offset
+    differences = targets[:, None, :] - translated.points[None, :, :]
+    squared_distances = np.einsum("ijk,ijk->ij", differences, differences)
+    expected = -evaluator.normalization * (
+        np.power(squared_distances, -0.5 * (3.0 + 2.0 * evaluator.order))
+        @ translated.weighted_values
+    )
+
+    actual = evaluator.quadrature_action_many((translated,), targets)
+
+    np.testing.assert_allclose(actual, expected, rtol=2.0e-14, atol=0.0)
 
 
 @pytest.mark.unit

@@ -214,7 +214,6 @@ def appell_f1_a_plus_one(
             y_flat[indices],
             _DEFAULT_ORDERS[0],
         )
-        accepted = np.zeros(indices.size, dtype=bool)
         for order in _DEFAULT_ORDERS[1:]:
             current = _fixed_euler_many(
                 a,
@@ -225,15 +224,15 @@ def appell_f1_a_plus_one(
                 order,
             )
             converged = np.abs(current - previous) <= atol + rtol * np.abs(current)
-            newly_converged = converged & ~accepted
-            if bool(np.any(newly_converged)):
-                result[indices[newly_converged]] = current[newly_converged]
-            accepted |= converged
-            previous = current
-            if bool(np.all(accepted)):
+            if bool(np.any(converged)):
+                result[indices[converged]] = current[converged]
+            remaining = ~converged
+            if not bool(np.any(remaining)):
+                indices = indices[:0]
                 break
-        fallback_indices = indices[~accepted]
-        difficult[fallback_indices] = True
+            indices = indices[remaining]
+            previous = current[remaining]
+        difficult[indices] = True
 
     difficult_indices = np.flatnonzero(difficult)
     if difficult_indices.size:
