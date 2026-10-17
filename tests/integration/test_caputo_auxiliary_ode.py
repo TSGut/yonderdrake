@@ -15,9 +15,9 @@ from yonderdrake import (  # noqa: E402
     BirkSong,
     CaputoDerivative,
     Diethelm2008,
-    FractionalTimeStepper,
     Recurrence,
     SumOfExponentials,
+    TimeMemoryStepper,
 )
 
 
@@ -36,7 +36,7 @@ def make_relaxation_stepper(
     residual = (
         fd.inner(CaputoDerivative(u, 0.6), v) + fd.inner(u, v)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         representation,
         t,
@@ -62,7 +62,7 @@ def test_constant_solution_and_mixed_memory_contract(
     t = fd.Constant(0.0)
     dt = fd.Constant(0.1)
     residual = fd.inner(CaputoDerivative(u, 0.4), v) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         representation_type(4),
         t,
@@ -141,7 +141,7 @@ def test_auxiliary_residual_time_is_evaluated_at_end_of_step(
         + fd.inner(u, v)
         - fd.inner(t, v)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         representation,
         t,
@@ -267,7 +267,7 @@ def auxiliary_power_value(scheme: str, step_size: float) -> float:
         + reaction * fd.inner(u, v)
         - fd.inner(source, v)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         BirkSong(6),
         t,

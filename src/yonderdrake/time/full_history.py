@@ -219,7 +219,7 @@ class FullHistoryStepper(StepperLifecycle):
             import firedrake as fd
         except ImportError as error:
             raise RuntimeError(
-                "FractionalTimeStepper requires an active Firedrake environment"
+                "TimeMemoryStepper requires an active Firedrake environment"
             ) from error
         require_real_float64_petsc()
         from yonderdrake.time._ufl_marker import (

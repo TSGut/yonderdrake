@@ -28,7 +28,7 @@ undamped construction described below.
 
 | Representation | Quadrature | Status | Source |
 | --- | --- | --- | --- |
-| `Cayley` | Gauss-Jacobi after a Cayley map of selectable exponent | Default | Generalizes [Diethelm (2008)](https://doi.org/10.1007/s11075-008-9193-8) and [Birk and Song (2010)](https://doi.org/10.1007/s00466-010-0510-4) |
+| `Cayley` | Gauss-Jacobi after a Cayley map of selectable exponent | Family of the default `BirkSong` | Generalizes [Diethelm (2008)](https://doi.org/10.1007/s11075-008-9193-8) and [Birk and Song (2010)](https://doi.org/10.1007/s00466-010-0510-4) |
 | `Jacobi` | Gauss-Jacobi after a two-parameter endpoint map | Expert | [Diethelm (2023)](https://doi.org/10.1109/ICFDA58234.2023.10153228) |
 | `SumOfExponentials` | Dyadic Gaussian construction over a requested interval | Supported alternative | [Jiang et al. (2017)](https://doi.org/10.4208/cicp.OA-2016-0136) |
 | `Diethelm2022` | Published Gauss-Laguerre rule, or truncated trapezoidal/Simpson/Gauss-Legendre rules | Comparison only | [Diethelm (2022)](https://doi.org/10.3390/math10081245), [(2023)](https://doi.org/10.1007/978-981-19-7716-9_1) |
@@ -79,10 +79,8 @@ problem needs, because the diagonal calibration that `Cayley` uses does not obvi
 carry over. At each order the pair is rejected when
 $\sigma\alpha+\rho(1-\alpha)=1$, where the recurrence degenerates.
 
-Mode counts above the recommended ranges remain available for convergence
-experiments. Construction emits `ModeCountAdvisoryWarning` and records
-`mode_count_recommended=False` in the metadata. The larger hard ceilings in
-{doc}`../api` are resource guards. The Gauss-Jacobi construction computes
+Recommended mode counts and hard ceilings are listed in {doc}`../api`. The
+Gauss-Jacobi construction computes
 selected eigenvectors in bounded-size chunks, so its temporary memory grows
 linearly with the mode count even though its work remains quadratic.
 
@@ -145,7 +143,7 @@ underflow. This keeps finite positive spectra available for high-mode
 comparison experiments.
 
 ```python
-stepper = FractionalTimeStepper(
+stepper = TimeMemoryStepper(
     F,
     SineDiffusive(128),
     t,
@@ -159,7 +157,7 @@ The formulation is selected automatically when `formulation` is omitted.
 Ordinary SDR converges only as $O(m^{\alpha-1})$. Fixed-problem comparisons
 against `FullHistory` also show persistent, oscillatory long-time error because
 the modes do not contract. It is included for reproducing and comparing
-literature methods. The general time steppers support it. The Caputo-Wismer
+literature methods. `TimeMemoryStepper` supports it. The Caputo-Wismer
 application layer supports the positive-rate representations.
 
 ## Refining a representation
@@ -168,16 +166,9 @@ For the fixed-count positive-rate methods, the mode count and `rate_scale` are
 quadrature
 parameters of the memory integral. They are **independent of the time grid**.
 Halving `dt` does not improve a badly resolved spectrum, and adding modes does
-not fix a coarse timestep. For `SumOfExponentials`, lower `target_error` to
-derive a finer spectrum, then lower `dt` and rebuild the representation with
-the new `min_step`. Refine one control at a time, as in
+not fix a coarse timestep. Refine one control at a time, as in
 {doc}`../examples/refining`.
 
 For `SineDiffusive`, increase the mode count at fixed `dt` first. Its slow
 quadrature convergence and undamped long-time error should both be measured
 against `FullHistory` on the intended time interval.
-
-Equal mode counts across representations do not imply equal accuracy.
-Comparisons are only meaningful against a shared analytic or high-accuracy
-reference. See {ref}`time-derivative-representation-benchmarks` for the
-comparison.

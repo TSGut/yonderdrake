@@ -14,9 +14,9 @@ from yonderdrake import (  # noqa: E402
     AuxiliaryODE,
     BirkSong,
     Diethelm2008,
-    FractionalTimeStepper,
     Recurrence,
     RiemannLiouvilleDerivative,
+    TimeMemoryStepper,
 )
 
 
@@ -41,7 +41,7 @@ def make_constant_problem(
         + fd.inner(u, v)
         - fd.inner(source, v)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         representation,
         t,

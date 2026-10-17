@@ -25,7 +25,6 @@ from yonderdrake.time.representations import (
 )
 from yonderdrake.time.stepper import (
     ExponentialMemoryCompatibilityWarning,
-    FractionalTimeStepper,
     TimeMemoryStepper,
 )
 
@@ -41,7 +40,6 @@ __all__ = [
     "ExponentialMemory",
     "ExponentialMemoryCompatibilityWarning",
     "FastObliviousCQ",
-    "FractionalTimeStepper",
     "FullHistory",
     "Jacobi",
     "LubichCQ",

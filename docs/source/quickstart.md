@@ -14,8 +14,8 @@ from yonderdrake import (
     BirkSong,
     CaputoDerivative,
     Diethelm2008,
-    FractionalTimeStepper,
     FullHistory,
+    TimeMemoryStepper,
 )
 
 mesh = fd.UnitIntervalMesh(1)
@@ -26,7 +26,7 @@ t = fd.Constant(0.0)
 dt = fd.Constant(0.01)
 
 F = (fd.inner(CaputoDerivative(u, 0.6), v) + fd.inner(u, v)) * fd.dx
-stepper = FractionalTimeStepper(F, BirkSong(48), t, dt, u)
+stepper = TimeMemoryStepper(F, BirkSong(48), t, dt, u)
 
 for _ in range(100):
     stepper.advance()
@@ -60,15 +60,12 @@ Three choices appear here:
 Swapping a representation means changing one argument:
 
 ```python
-stepper = FractionalTimeStepper(F, Diethelm2008(48), t, dt, u)
-stepper = FractionalTimeStepper(F, FullHistory(), t, dt, u)
+stepper = TimeMemoryStepper(F, Diethelm2008(48), t, dt, u)
+stepper = TimeMemoryStepper(F, FullHistory(), t, dt, u)
 ```
 
-Use `BirkSong` by default or `Diethelm2008` as its direct alternative. Use
-`SumOfExponentials` when the time interval and an absolute kernel tolerance
-are known in advance. The remaining diffusive representations are for
-literature comparisons. See the {ref}`method map <method-map>`.
-For single-exponential memory, see {doc}`examples/exponential-memory`.
+Use `BirkSong` by default. {doc}`methods` explains when to choose another
+representation.
 
 ## Adding space
 
@@ -148,7 +145,7 @@ Refine one at a time:
 | Memory poorly resolved | mode count, `rate_scale` | independent of `dt` |
 | Time discretization | `dt` | independent of mode count |
 | Spatial discretization | mesh | refine last |
-| Spectral quadrature | `sinc_truncation_target` | sinc model estimate. Mesh controls FE error |
+| Spectral quadrature | `sinc_truncation_target` | controls the sinc model error only, not the FE error |
 | Riesz quadrature | `target_quadrature_degree` | separate from compression tolerance |
 | Periodic Fourier | uniform grid size | keep represented modes below Nyquist |
 | Algebraic | PETSc tolerances | keep below the discretization error |
@@ -165,7 +162,7 @@ timestep:
 u.assign(1.0)
 t.assign(0.0)
 dt.assign(0.001)
-stepper = FractionalTimeStepper(F, BirkSong(256), t, dt, u)
+stepper = TimeMemoryStepper(F, BirkSong(256), t, dt, u)
 
 for _ in range(1000):
     stepper.advance()
@@ -199,28 +196,10 @@ the usual trade-off between accuracy and computational cost.
 
 Exact supported combinations and validation rules are collected in {doc}`api`.
 
-## Notebooks
-
-Two Jupyter notebooks work through complete problems on a graded 2D mesh,
-building up one step at a time and plotting as they go.
-
-| Notebook | What it builds |
-| --- | --- |
-| [01-time-fractional-diffusion.ipynb](https://github.com/TSGut/yonderdrake/blob/main/notebooks/01-time-fractional-diffusion.ipynb) | Graded mesh, a Mittag-Leffler warm-up, the 2D Caputo problem, a manufactured solution, separating mode and timestep error, and graded timesteps |
-| [02-spectral-fractional-laplacian.ipynb](https://github.com/TSGut/yonderdrake/blob/main/notebooks/02-spectral-fractional-laplacian.ipynb) | The spectral operator on a known eigenfunction, the sinc quadrature knob and its discretization floor, solving $(-\Delta_D)^s u=1$, why grading pays, and coupling back to a Caputo derivative |
-
-Run them in an activated Firedrake environment. Beyond Yonderdrake itself, they
-need only `matplotlib` and `mpmath`. They are stored without outputs, so every
-figure is produced by the run in front of you.
-
-A Jupyter kernel is a single process, so the notebooks run serially however the
-environment was launched. They show each step of the calculation. For larger
-problems, use `mpiexec -n N python your_script.py`, as in `demos/`.
-Driving MPI from Jupyter via `ipyparallel` is currently untested.
-
 ## Next
 
 - {ref}`guides-and-examples`: worked examples, one feature at a time.
+- {doc}`notebooks`: complete problems built up step by step.
 - {doc}`gallery/index`: larger applications, with animations.
 - {ref}`mathematics-and-methods`: definitions, methods, and their papers.
 - {doc}`api`: signatures and exact limitations.

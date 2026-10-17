@@ -24,16 +24,18 @@ Yonderdrake exposes it as fading memory.
 
 ## Exactness
 
-For a step $h$ and Yonderdrake's linear time interpolant, the mode recurrence
-is exact:
+For a step $h$ and the linear interpolant, `Recurrence(interpolant="linear")`,
+the mode recurrence is exact:
 
 $$
 z_{n+1}=e^{-\lambda h}z_n
 +\frac{1-e^{-\lambda h}}{\lambda h}(u_{n+1}-u_n).
 $$
 
-The operator therefore costs one stored field per marker and contributes no
-quadrature error of its own. Unlike the fractional representations, there is
+The default `Recurrence()` uses the quadratic interpolant from
+{ref}`time-stepping` and is exact in the same sense. The operator therefore
+costs one stored field per marker and contributes no quadrature error of its
+own. Unlike the fractional representations, there is
 no mode count to refine.
 
 ## Caputo-Fabrizio
@@ -62,21 +64,17 @@ one-timescale kernel.
 
 ## Stepping
 
-Use `TimeMemoryStepper` for exponential-memory markers:
+Exponential-memory markers need no representation, so pass `None`:
 
 ```python
 from yonderdrake import ExponentialMemory, TimeMemoryStepper
 
-F = (inner(ExponentialMemory(u, 1.7), v) - inner(source, v)) * dx
-stepper = TimeMemoryStepper(F, t, dt, u)
+F = (fd.inner(ExponentialMemory(u, 1.7), v) - fd.inner(source, v)) * fd.dx
+stepper = TimeMemoryStepper(F, None, t, dt, u)
 ```
 
-The default recurrence can mix exponential and fractional markers.
-`representation` supplies the modes for the fractional terms. `AuxiliaryODE`
-supports exactly one exponential marker.
-Passing an exponential marker to `FractionalTimeStepper` raises `ValueError`,
-and `FullHistory` cannot be combined with it. A worked example is in
-{doc}`../examples/exponential-memory`.
+Mixing with fractional markers and the supported formulations are listed in
+{doc}`../api`. A worked example is in {doc}`../examples/exponential-memory`.
 
 :::{warning}
 The operator is zero at $t=t_0$, so construction emits an

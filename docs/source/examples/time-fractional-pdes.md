@@ -7,16 +7,16 @@ The marker stays on the stepped field. The spatial operator stays outside it.
 
 ```python
 F = (
-    inner(CaputoDerivative(u, alpha), v)
-    + kappa * inner(grad(u), grad(v))
-    - inner(source, v)
-) * dx
+    fd.inner(CaputoDerivative(u, alpha), v)
+    + kappa * fd.inner(fd.grad(u), fd.grad(v))
+    - fd.inner(source, v)
+) * fd.dx
 ```
 
 [time_fractional_diffusion.py](https://github.com/TSGut/yonderdrake/blob/main/demos/fractional_time/time_fractional_diffusion.py)
 uses the ordinary
-spatial Laplacian with the Diethelm 2008 representation. Refine modes at a fixed
-small `dt`, then `dt` at a fixed large mode count, then the mesh.
+spatial Laplacian with the Diethelm 2008 representation. See
+{doc}`refining` for the refinement order.
 
 ## Caputo-Wismer-Kelvin damping
 
@@ -31,26 +31,25 @@ For homogeneous Dirichlet data, integrate both Laplacians by parts and place
 the marker directly on the stepped field:
 
 ```python
+u_prev, u_older = u.copy(deepcopy=True), u.copy(deepcopy=True)
+u_tt = (u - 2 * u_prev + u_older) / dt**2
 Du = CaputoDerivative(u, alpha)
 F = (
-    inner(u_tt, v)
-    + c**2 * inner(grad(u), grad(v))
-    + b * inner(grad(Du), grad(v))
-) * dx
-stepper = FractionalTimeStepper(F, Diethelm2008(32), t, dt, u, bcs=bc)
+    fd.inner(u_tt, v)
+    + c**2 * fd.inner(fd.grad(u), fd.grad(v))
+    + b * fd.inner(fd.grad(Du), fd.grad(v))
+) * fd.dx
+stepper = TimeMemoryStepper(F, Diethelm2008(32), t, dt, u, bcs=bc)
 ```
 
-The last term is $-b\Delta(D_C^\alpha u)$. The derivative is fractional in time
-and the spatial Laplacian is classical. On a fixed domain, for a sufficiently
-regular field and a time-independent linear spatial operator,
+`u_tt` is an ordinary backward difference. After each `advance()`, assign
+`u_prev` to `u_older` and `u` to `u_prev`, as in
+[visual_time_derivative_dragon_wave.py](https://github.com/TSGut/yonderdrake/blob/main/demos/gallery/caputo_wismer/visual_time_derivative_dragon_wave.py).
 
-$$
-\Delta(D_C^\alpha u)=D_C^\alpha(\Delta u).
-$$
-
-Do not wrap a strong CG Laplacian in the marker. Keep the marker on the
-evolving field. `RiemannLiouvilleDerivative` uses the same weak form and adds
-its exact trace term.
+The last term is $-b\Delta(D_C^\alpha u)$. The classical Laplacian stays
+outside the marker, which is justified in
+{doc}`../theory/time-derivatives`. `RiemannLiouvilleDerivative` uses the same
+weak form and adds its exact trace term.
 
 ## Several materials at once
 
@@ -59,11 +58,12 @@ orders, each with its own representation:
 
 ```python
 F_layered = sum(
-    b_m * chi_m * inner(grad(CaputoDerivative(u, alpha_m)), grad(v)) * dx
+    b_m * chi_m
+    * fd.inner(fd.grad(CaputoDerivative(u, alpha_m)), fd.grad(v)) * fd.dx
     for b_m, chi_m, alpha_m in materials
 )
 ```
 
-All terms share the field and the time increment. The BrainWeb and skullball
+The BrainWeb and skullball
 demos in {doc}`../gallery/index` run this form under MPI. For reusable 2D and
 3D wave and sensor-array helpers, see {doc}`caputo-wismer-imaging`.

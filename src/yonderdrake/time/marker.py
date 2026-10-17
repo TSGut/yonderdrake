@@ -7,7 +7,7 @@ from typing import Any
 
 
 def CaputoDerivative(u: Any, alpha: Any) -> Any:
-    """Create a Caputo marker for ``FractionalTimeStepper``."""
+    """Create a Caputo marker for ``TimeMemoryStepper``."""
     from yonderdrake.time._ufl_marker import CaputoDerivativeMarker
 
     return CaputoDerivativeMarker(u, alpha)

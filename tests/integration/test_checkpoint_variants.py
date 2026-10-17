@@ -17,7 +17,6 @@ from yonderdrake import (  # noqa: E402
     Diethelm2008,
     Diethelm2022,
     FastObliviousCQ,
-    FractionalTimeStepper,
     FullHistory,
     Oscillator,
     Recurrence,
@@ -26,6 +25,7 @@ from yonderdrake import (  # noqa: E402
     SineDiffusive,
     SpectralFractionalLaplacian,
     SumOfExponentials,
+    TimeMemoryStepper,
     YuanAgrawal,
 )
 
@@ -55,7 +55,7 @@ def make_time_stepper(
     options = {}
     if formulation is not None:
         options["formulation"] = formulation
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         representation,
         time,
@@ -309,7 +309,7 @@ def make_multi_order_stepper(mesh, representation, *, initial_value: float):
         + fd.inner(RiemannLiouvilleDerivative(u, 0.6), test)
         + fd.inner(u, test)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         representation,
         time,
@@ -609,7 +609,7 @@ def make_spatial_stepper(
     residual = (
         fd.inner(CaputoDerivative(u, 0.5), test) + fd.inner(spatial, test)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         BirkSong(2),
         time,

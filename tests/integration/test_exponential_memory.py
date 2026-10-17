@@ -17,7 +17,6 @@ from yonderdrake import (  # noqa: E402
     CaputoFabrizioOperator,
     ExponentialMemory,
     ExponentialMemoryCompatibilityWarning,
-    FractionalTimeStepper,
     TimeMemoryStepper,
 )
 
@@ -44,6 +43,7 @@ def make_linear_response(
     with pytest.warns(ExponentialMemoryCompatibilityWarning):
         stepper = TimeMemoryStepper(
             residual,
+            None,
             time,
             dt,
             u,
@@ -147,6 +147,7 @@ def test_caputo_fabrizio_wrapper_matches_its_exponential_definition() -> None:
             steppers.append(
                 TimeMemoryStepper(
                     residual,
+                    None,
                     time,
                     dt,
                     field,
@@ -175,10 +176,10 @@ def test_mixed_caputo_and_exponential_markers_have_separate_modes() -> None:
     with pytest.warns(ExponentialMemoryCompatibilityWarning):
         stepper = TimeMemoryStepper(
             residual,
+            BirkSong(3),
             fd.Constant(0.0),
             fd.Constant(0.1),
             u,
-            representation=BirkSong(3),
             solver_parameters={"ksp_type": "preonly", "pc_type": "lu"},
         )
     stepper.advance()
@@ -226,17 +227,15 @@ def test_api_rejects_misrouting_and_mutable_rate() -> None:
     rate = fd.Constant(1.0)
     residual = fd.inner(ExponentialMemory(u, rate), test) * fd.dx
 
-    with pytest.raises(ValueError, match="TimeMemoryStepper"):
-        FractionalTimeStepper(residual, BirkSong(2), time, dt, u)
     with pytest.warns(ExponentialMemoryCompatibilityWarning):
-        stepper = TimeMemoryStepper(residual, time, dt, u)
+        stepper = TimeMemoryStepper(residual, None, time, dt, u)
     rate.assign(2.0)
     with pytest.raises(RuntimeError, match="time-memory parameter"):
         stepper.advance()
 
     ordinary = fd.inner(u, test) * fd.dx
     with pytest.raises(ValueError, match="time-memory marker"):
-        TimeMemoryStepper(ordinary, time, dt, u)
+        TimeMemoryStepper(ordinary, None, time, dt, u)
 
 
 @pytest.mark.verification
@@ -255,6 +254,7 @@ def test_auxiliary_backward_euler_matches_scalar_mode_equation() -> None:
     with pytest.warns(ExponentialMemoryCompatibilityWarning):
         stepper = TimeMemoryStepper(
             residual,
+            None,
             fd.Constant(0.0),
             fd.Constant(step_size),
             u,

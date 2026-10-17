@@ -28,12 +28,6 @@ source_suffix = {
     ".rst": "restructuredtext",
 }
 master_doc = "index"
-exclude_patterns = [
-    "theory/time-derivatives.md",
-    "theory/diffusive-representations.md",
-    "theory/direct-time-methods.md",
-    "theory/exponential-memory.md",
-]
 
 myst_enable_extensions = [
     "amsmath",

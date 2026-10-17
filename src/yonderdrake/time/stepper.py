@@ -28,10 +28,12 @@ from yonderdrake.time.formulations import AuxiliaryODE, Oscillator, Recurrence
 from yonderdrake.time.representations import (
     AlikhanovL21Sigma,
     BirkSong,
+    Cayley,
     Diethelm2008,
     Diethelm2022,
     FastObliviousCQ,
     FullHistory,
+    Jacobi,
     LubichCQ,
     SineDiffusive,
     SumOfExponentials,
@@ -1162,6 +1164,8 @@ _DIFFUSIVE_DISPATCH = _StepperDispatch(
 _TIME_STEPPER_DISPATCH: dict[type[Any], _StepperDispatch] = {
     type(None): _DIFFUSIVE_DISPATCH,
     BirkSong: _DIFFUSIVE_DISPATCH,
+    Cayley: _DIFFUSIVE_DISPATCH,
+    Jacobi: _DIFFUSIVE_DISPATCH,
     Diethelm2008: _DIFFUSIVE_DISPATCH,
     Diethelm2022: _DIFFUSIVE_DISPATCH,
     YuanAgrawal: _DIFFUSIVE_DISPATCH,
@@ -1211,7 +1215,6 @@ def _construct_time_stepper(
     bcs: Any = None,
     solver_parameters: Any = None,
     appctx: Any = None,
-    allow_exponential: bool,
     warn_initial_compatibility: bool,
 ) -> Any:
     from yonderdrake.time._ufl_marker import (
@@ -1273,8 +1276,6 @@ def _construct_time_stepper(
         )
         for marker in markers
     )
-    if has_exponential and not allow_exponential:
-        raise ValueError("ExponentialMemory requires TimeMemoryStepper")
     if has_exponential and not dispatch.permits_exponential:
         raise NotImplementedError(
             f"{type(representation).__name__} cannot be combined with "
@@ -1310,37 +1311,6 @@ def _construct_time_stepper(
 
 def TimeMemoryStepper(
     F: Any,
-    t: Any,
-    dt: Any,
-    u: Any,
-    *,
-    representation: Any = None,
-    formulation: Any = None,
-    u0: Any = None,
-    bcs: Any = None,
-    solver_parameters: Any = None,
-    appctx: Any = None,
-    warn_initial_compatibility: bool = True,
-) -> Any:
-    """Advance exponential memory and optional fractional time markers."""
-    return _construct_time_stepper(
-        F,
-        representation,
-        t,
-        dt,
-        u,
-        formulation=formulation,
-        u0=u0,
-        bcs=bcs,
-        solver_parameters=solver_parameters,
-        appctx=appctx,
-        allow_exponential=True,
-        warn_initial_compatibility=warn_initial_compatibility,
-    )
-
-
-def FractionalTimeStepper(
-    F: Any,
     representation: Any,
     t: Any,
     dt: Any,
@@ -1351,8 +1321,13 @@ def FractionalTimeStepper(
     bcs: Any = None,
     solver_parameters: Any = None,
     appctx: Any = None,
+    warn_initial_compatibility: bool = True,
 ) -> Any:
-    """Construct a native formulation for a fractional derivative marker."""
+    """Advance fractional and exponential time-memory markers.
+
+    ``representation`` may be ``None`` when the residual contains only
+    exponential-memory markers.
+    """
     return _construct_time_stepper(
         F,
         representation,
@@ -1364,6 +1339,5 @@ def FractionalTimeStepper(
         bcs=bcs,
         solver_parameters=solver_parameters,
         appctx=appctx,
-        allow_exponential=False,
-        warn_initial_compatibility=False,
+        warn_initial_compatibility=warn_initial_compatibility,
     )

@@ -113,7 +113,7 @@ def main(scenario: str) -> None:
 
     import firedrake as fd
 
-    from yonderdrake import CaputoDerivative, Diethelm2008, FractionalTimeStepper
+    from yonderdrake import CaputoDerivative, Diethelm2008, TimeMemoryStepper
 
     configure_matplotlib(plt)
     communicator = fd.COMM_WORLD
@@ -295,7 +295,7 @@ def main(scenario: str) -> None:
             + bath_speed * fd.inner(velocity, test) * fd.ds
             - fd.inner(source_expression, test) * fd.dx
         )
-        steppers[material_name] = FractionalTimeStepper(
+        steppers[material_name] = TimeMemoryStepper(
             residual,
             Diethelm2008(args.modes),
             time,

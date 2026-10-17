@@ -14,11 +14,13 @@ fd = pytest.importorskip("firedrake")
 from yonderdrake import (  # noqa: E402
     BirkSong,
     CaputoDerivative,
+    Cayley,
     Diethelm2008,
-    FractionalTimeStepper,
     FullHistory,
+    Jacobi,
     Recurrence,
     SumOfExponentials,
+    TimeMemoryStepper,
 )
 from yonderdrake.time.coefficients import (  # noqa: E402
     quadratic_recurrence_coefficients,
@@ -44,7 +46,7 @@ def make_scalar_problem(
     options = {}
     if formulation is not None:
         options["formulation"] = formulation
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         representation,
         t,
@@ -71,6 +73,30 @@ def test_constant_has_zero_caputo_derivative(representation) -> None:
 
 
 @pytest.mark.verification
+@pytest.mark.parametrize(
+    "representation",
+    [Cayley(24, power=4.0), Jacobi(24, sigma=4.0, rho=4.0)],
+)
+def test_cayley_family_steps_like_birk_song(representation) -> None:
+    def relax(chosen) -> np.ndarray:
+        mesh = fd.UnitIntervalMesh(1)
+        space = fd.FunctionSpace(mesh, "CG", 1)
+        u = fd.Function(space).assign(1.0)
+        v = fd.TestFunction(space)
+        residual = (
+            fd.inner(CaputoDerivative(u, 0.6), v) + fd.inner(u, v)
+        ) * fd.dx
+        t, dt = fd.Constant(0.0), fd.Constant(0.05)
+        stepper = TimeMemoryStepper(residual, chosen, t, dt, u)
+        for _ in range(5):
+            stepper.advance()
+            t.assign(t + dt)
+        return u.dat.data_ro.copy()
+
+    assert np.allclose(relax(representation), relax(BirkSong(24)), rtol=1.0e-10)
+
+
+@pytest.mark.verification
 @pytest.mark.parametrize("interpolant", ["linear", "quadratic"])
 def test_variable_step_matches_scalar_recurrence(interpolant: str) -> None:
     alpha = 0.45
@@ -86,7 +112,7 @@ def test_variable_step_matches_scalar_recurrence(interpolant: str) -> None:
         fd.inner(CaputoDerivative(u, alpha), v)
         + reaction * fd.inner(u, v)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         representation,
         t,
@@ -208,7 +234,7 @@ def test_residual_time_is_evaluated_at_end_of_step() -> None:
         fd.inner(CaputoDerivative(u, alpha), v)
         - fd.inner(t, v)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         representation,
         t,
@@ -245,7 +271,7 @@ def test_vector_field_uses_one_recurrence_per_component() -> None:
         fd.inner(CaputoDerivative(u, alpha), test)
         + reaction * fd.inner(u, test)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         representation,
         time,
@@ -342,7 +368,7 @@ def test_failed_solve_does_not_commit_state() -> None:
         fd.inner(CaputoDerivative(u, 0.5), v)
         + fd.inner(u**3 - 10.0, v)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         Diethelm2008(8),
         t,
@@ -378,7 +404,7 @@ def test_nonlinear_residual_and_strong_dirichlet_condition() -> None:
         - fd.inner(1.0, v)
     ) * fd.dx
     bc = fd.DirichletBC(space, 1.0, "on_boundary")
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         BirkSong(16),
         t,
@@ -400,17 +426,17 @@ def test_marker_and_configuration_validation() -> None:
     dt = fd.Constant(0.1)
     ordinary = fd.inner(u, v) * fd.dx
     with pytest.raises(ValueError, match="at least one"):
-        FractionalTimeStepper(ordinary, BirkSong(4), t, dt, u)
+        TimeMemoryStepper(ordinary, BirkSong(4), t, dt, u)
     doubled = (
         fd.inner(CaputoDerivative(u, 0.4), v)
         + fd.inner(CaputoDerivative(u, 0.6), v)
     ) * fd.dx
-    multi_term = FractionalTimeStepper(doubled, BirkSong(4), t, dt, u)
+    multi_term = TimeMemoryStepper(doubled, BirkSong(4), t, dt, u)
     assert multi_term.solver_stats()["num_fractional_terms"] == 2
     with pytest.raises(ValueError, match="linear.*quadratic"):
         Recurrence(interpolant="constant")
     with pytest.raises(NotImplementedError, match="own history rule"):
-        FractionalTimeStepper(
+        TimeMemoryStepper(
             doubled,
             FullHistory(),
             t,
@@ -445,7 +471,7 @@ def test_multiple_caputo_orders_share_one_physical_field() -> None:
         )
         + fd.inner(u, v)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         representation,
         t,
@@ -480,7 +506,7 @@ def test_alpha_is_immutable_and_step_size_is_validated() -> None:
     dt = fd.Constant(0.1)
     alpha = fd.Constant(0.6)
     residual = fd.inner(CaputoDerivative(u, alpha), v) * fd.dx
-    stepper = FractionalTimeStepper(residual, BirkSong(6), t, dt, u)
+    stepper = TimeMemoryStepper(residual, BirkSong(6), t, dt, u)
     alpha.assign(0.7)
     with pytest.raises(RuntimeError, match="changing alpha"):
         stepper.advance()
@@ -504,7 +530,7 @@ def power_solution_error(num_modes: int, step_size: float) -> float:
     residual = (
         fd.inner(CaputoDerivative(u, alpha), v) - fd.inner(source, v)
     ) * fd.dx
-    stepper = FractionalTimeStepper(residual, BirkSong(num_modes), t, dt, u)
+    stepper = TimeMemoryStepper(residual, BirkSong(num_modes), t, dt, u)
     coefficient = gamma(power + 1.0) / gamma(power + 1.0 - alpha)
     num_steps = round(1.0 / step_size)
     for index in range(1, num_steps + 1):
@@ -555,7 +581,7 @@ def relaxation_error(num_modes: int, step_size: float) -> float:
     residual = (
         fd.inner(CaputoDerivative(u, alpha), v) + fd.inner(u, v)
     ) * fd.dx
-    stepper = FractionalTimeStepper(residual, Diethelm2008(num_modes), t, dt, u)
+    stepper = TimeMemoryStepper(residual, Diethelm2008(num_modes), t, dt, u)
     for _ in range(round(1.0 / step_size)):
         stepper.advance()
         t.assign(t + dt)

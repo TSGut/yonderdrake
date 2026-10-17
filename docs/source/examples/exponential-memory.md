@@ -1,7 +1,8 @@
 # Exponential memory and Caputo-Fabrizio
 
 Exponential memory is a bounded-kernel fading-memory operator
-({ref}`exponential-memory`). It uses `TimeMemoryStepper`.
+({ref}`exponential-memory`). It needs no representation, so the stepper
+receives `None`.
 
 This example solves
 
@@ -16,26 +17,26 @@ whose solution is $u(t)=t$.
 ```python
 from math import exp
 
-from firedrake import *
+import firedrake as fd
 from yonderdrake import (
     CaputoFabrizioOperator,
     ExponentialMemory,
     TimeMemoryStepper,
 )
 
-mesh = UnitIntervalMesh(1)
-V = FunctionSpace(mesh, "CG", 1)
-u = Function(V)
-v = TestFunction(V)
-t, dt = Constant(0.0), Constant(0.05)
-source = Constant(0.0)
+mesh = fd.UnitIntervalMesh(1)
+V = fd.FunctionSpace(mesh, "CG", 1)
+u = fd.Function(V)
+v = fd.TestFunction(V)
+t, dt = fd.Constant(0.0), fd.Constant(0.05)
+source = fd.Constant(0.0)
 decay_rate = 1.7
 
 F = (
-    inner(ExponentialMemory(u, decay_rate), v)
-    - inner(source, v)
-) * dx
-stepper = TimeMemoryStepper(F, t, dt, u)
+    fd.inner(ExponentialMemory(u, decay_rate), v)
+    - fd.inner(source, v)
+) * fd.dx
+stepper = TimeMemoryStepper(F, None, t, dt, u)
 
 for _ in range(20):
     target_time = float(t) + float(dt)

@@ -26,11 +26,11 @@ from yonderdrake import (
     Diethelm2008,
     Diethelm2022,
     FastObliviousCQ,
-    FractionalTimeStepper,
     FullHistory,
     LubichCQ,
     SineDiffusive,
     SumOfExponentials,
+    TimeMemoryStepper,
     YuanAgrawal,
 )
 
@@ -96,7 +96,7 @@ def _run_problem(
     residual = (
         fd.inner(CaputoDerivative(u, alpha), test) - fd.inner(source, test)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         candidate.builder(),
         time,

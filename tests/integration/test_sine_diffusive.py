@@ -12,10 +12,10 @@ fd = pytest.importorskip("firedrake")
 from yonderdrake import (  # noqa: E402
     BirkSong,
     CaputoDerivative,
-    FractionalTimeStepper,
     Oscillator,
     Recurrence,
     SineDiffusive,
+    TimeMemoryStepper,
 )
 from yonderdrake.time.coefficients import oscillator_coefficients  # noqa: E402
 
@@ -34,7 +34,7 @@ def _make_stepper(*, num_modes: int = 12, step_size: float = 0.1):
         + reaction * fd.inner(solution, test)
     ) * fd.dx
     representation = SineDiffusive(num_modes)
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         representation,
         time,
@@ -133,7 +133,7 @@ def test_dispatch_rejects_incompatible_formulations() -> None:
     test = fd.TestFunction(solution.function_space())
     residual = fd.inner(CaputoDerivative(solution, alpha), test) * fd.dx
     with pytest.raises(NotImplementedError, match="does not support Recurrence"):
-        FractionalTimeStepper(
+        TimeMemoryStepper(
             residual,
             representation,
             time,
@@ -142,7 +142,7 @@ def test_dispatch_rejects_incompatible_formulations() -> None:
             formulation=Recurrence(),
         )
     with pytest.raises(NotImplementedError, match="does not support Oscillator"):
-        FractionalTimeStepper(
+        TimeMemoryStepper(
             residual,
             BirkSong(4),
             time,

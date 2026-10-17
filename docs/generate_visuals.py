@@ -964,7 +964,7 @@ def _quickstart_relaxation_solution(
     """Compute the quickstart relaxation for one mode count."""
     import firedrake as fd
 
-    from yonderdrake import BirkSong, CaputoDerivative, FractionalTimeStepper
+    from yonderdrake import BirkSong, CaputoDerivative, TimeMemoryStepper
 
     alpha = 0.6
     mesh = fd.UnitIntervalMesh(1)
@@ -976,7 +976,7 @@ def _quickstart_relaxation_solution(
     residual = (
         fd.inner(CaputoDerivative(u, alpha), v) + fd.inner(u, v)
     ) * fd.dx
-    stepper = FractionalTimeStepper(residual, BirkSong(num_modes), t, dt, u)
+    stepper = TimeMemoryStepper(residual, BirkSong(num_modes), t, dt, u)
 
     times = [0.0]
     computed = [1.0]

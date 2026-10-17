@@ -63,7 +63,7 @@ it:
 
 ```python
 Du = CaputoDerivative(u, alpha)
-F_damping = b * inner(grad(Du), grad(v)) * dx
+F_damping = b * fd.inner(fd.grad(Du), fd.grad(v)) * fd.dx
 ```
 
 This is the weak form of $-b\Delta D_C^\alpha u$. Wrapping a transformed

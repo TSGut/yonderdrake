@@ -1,4 +1,4 @@
-# Riesz/restricted fractional Laplacian
+# Zero-exterior Riesz fractional Laplacian
 
 `RieszFractionalLaplacian(u, s)` is the whole-space singular integral applied
 to the zero extension of the interior function:
@@ -22,18 +22,16 @@ and its finite-element treatment follows
 The assembled operator uses the weak Galerkin action
 
 $$
-A_{ij}=\int_\Omega\phi_i(x)(-\Delta)^s\phi_j(x)\,dx ,
+A_{ij}=\int_\Omega\phi_i(x)(-\Delta)^s\phi_j(x)\,dx .
 $$
 
-The default boundary-sector Gauss-Jacobi target rule resolves the remaining
-boundary singularity. `target_quadrature_degree` controls it, and
+The target integrand is singular at $\partial\Omega$. The default
+boundary-sector Gauss-Jacobi target rule resolves this singularity. `target_quadrature_degree` controls it, and
 `target_quadrature_rule="ordinary"` selects a Duffy tensor-Gauss alternative.
 
-Scope: scalar CG1 or CG2 on affine 2D triangles or 3D tetrahedra, $0<s<1$,
-zero exterior extension. Complete homogeneous `bcs` are **required** for
-$s\geq1/2$, because a nonzero trace has infinite zero-extension energy. Below
-$1/2$ no trace is needed. Periodic and overlapping cell geometries are
-rejected.
+Complete homogeneous `bcs` are **required** for $s\geq1/2$, because a
+nonzero trace has infinite zero-extension energy. Below $1/2$ no trace is
+needed. Supported spaces and meshes are listed in {doc}`../api`.
 
 ## Simplex-supported source action
 

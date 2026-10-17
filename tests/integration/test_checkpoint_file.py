@@ -13,8 +13,8 @@ from yonderdrake import (  # noqa: E402
     AuxiliaryODE,
     BirkSong,
     CaputoDerivative,
-    FractionalTimeStepper,
     Recurrence,
+    TimeMemoryStepper,
 )
 
 
@@ -27,7 +27,7 @@ def make_stepper(mesh, formulation, *, initial_value: float):
     residual = (
         fd.inner(CaputoDerivative(u, 0.6), test) + fd.inner(u, test)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         BirkSong(4),
         time,

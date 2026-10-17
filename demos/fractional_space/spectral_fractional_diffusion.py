@@ -19,8 +19,8 @@ from firedrake import (
 from yonderdrake import (
     BirkSong,
     CaputoDerivative,
-    FractionalTimeStepper,
     SpectralFractionalLaplacian,
+    TimeMemoryStepper,
 )
 
 
@@ -49,7 +49,7 @@ def main() -> None:
         + inner(spatial, v)
         - inner(source, v)
     ) * dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         BirkSong(16),
         t,

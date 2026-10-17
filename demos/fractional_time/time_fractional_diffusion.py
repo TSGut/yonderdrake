@@ -15,7 +15,7 @@ from firedrake import (
     sin,
 )
 
-from yonderdrake import CaputoDerivative, Diethelm2008, FractionalTimeStepper
+from yonderdrake import CaputoDerivative, Diethelm2008, TimeMemoryStepper
 
 
 def main() -> None:
@@ -34,7 +34,7 @@ def main() -> None:
     residual = (
         inner(CaputoDerivative(u, 0.7), v) + inner(grad(u), grad(v))
     ) * dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         Diethelm2008(num_modes=64),
         t,

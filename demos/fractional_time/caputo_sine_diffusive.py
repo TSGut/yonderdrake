@@ -14,9 +14,9 @@ from firedrake import (
 
 from yonderdrake import (
     CaputoDerivative,
-    FractionalTimeStepper,
     Oscillator,
     SineDiffusive,
+    TimeMemoryStepper,
 )
 
 
@@ -36,7 +36,7 @@ def main() -> None:
     residual = (
         inner(CaputoDerivative(u, alpha), test) - inner(forcing, test)
     ) * dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         representation,
         time,

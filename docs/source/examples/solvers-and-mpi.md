@@ -34,8 +34,11 @@ shift_solver_parameters = {
 }
 ```
 
-Use `shift_cache="stream"` for bounded storage or `"all"` for repeated small
-problems.
+## MPI execution
+
+All time and space operator families support MPI execution. Reference
+backends explicitly marked as serial are the exceptions. The head-model
+gallery demos and their data are covered in {doc}`../gallery/data-and-mpi`.
 
 ## Riesz under MPI
 
@@ -46,4 +49,4 @@ serial. The mass solve is configurable and defaults to CG/Jacobi.
 
 The periodic Fourier operator supports MPI in 1D, 2D, and 3D.
 
-Storage details are in {doc}`../performance`.
+Storage for each method and operator is tabulated in {ref}`memory-storage`.

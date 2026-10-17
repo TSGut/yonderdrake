@@ -490,7 +490,7 @@ class YuanAgrawal:
 
 
 class Diethelm2022:
-    """Discretize Diethelm2008's 2022 real-line representation.
+    """Discretize Diethelm's 2022 real-line representation.
 
     ``quadrature`` selects the published Gauss-Laguerre construction or a
     truncated composite trapezoidal, composite Simpson, or Gauss-Legendre

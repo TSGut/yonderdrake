@@ -12,9 +12,9 @@ fd = pytest.importorskip("firedrake")
 from yonderdrake import (  # noqa: E402
     BirkSong,
     CaputoDerivative,
-    FractionalTimeStepper,
     RieszFractionalLaplacian,
     SpectralFractionalLaplacian,
+    TimeMemoryStepper,
 )
 
 MATRIX_FREE_SOLVER = {
@@ -54,7 +54,7 @@ def test_caputo_spectral_manufactured_eigenfunction() -> None:
         + fd.inner(spatial, v)
         - fd.inner(source, v)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         BirkSong(16),
         t,
@@ -100,7 +100,7 @@ def test_caputo_riesz_zero_exterior_decay() -> None:
     residual = (
         fd.inner(CaputoDerivative(u, 0.55), v) + fd.inner(spatial, v)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         BirkSong(8),
         t,

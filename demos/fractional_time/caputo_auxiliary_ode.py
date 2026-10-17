@@ -14,7 +14,7 @@ from yonderdrake import (
     AuxiliaryODE,
     BirkSong,
     CaputoDerivative,
-    FractionalTimeStepper,
+    TimeMemoryStepper,
 )
 
 
@@ -45,7 +45,7 @@ def main() -> None:
         "fieldsplit_memory_ksp_type": "preonly",
         "fieldsplit_memory_pc_type": "lu",
     }
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         BirkSong(num_modes),
         t,

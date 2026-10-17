@@ -5,14 +5,14 @@ Use Firedrake's collective checkpoint file after a successful step:
 ```python
 stepper.advance()
 t.assign(t + dt)
-with CheckpointFile("restart.h5", "w", comm=mesh.comm) as checkpoint:
+with fd.CheckpointFile("restart.h5", "w", comm=mesh.comm) as checkpoint:
     stepper.save_checkpoint(checkpoint)
 ```
 
 On restart, load the mesh, reconstruct the same form and stepper, then restore:
 
 ```python
-with CheckpointFile("restart.h5", "r", comm=COMM_WORLD) as checkpoint:
+with fd.CheckpointFile("restart.h5", "r", comm=fd.COMM_WORLD) as checkpoint:
     mesh = checkpoint.load_mesh("mesh")
     # Reconstruct V, u, F, and stepper on mesh.
     stepper.load_checkpoint(checkpoint)

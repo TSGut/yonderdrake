@@ -12,20 +12,19 @@ $$
 with 48 Birk-Song modes and the default eliminated recurrence:
 
 ```python
-F = (inner(CaputoDerivative(u, 0.6), v) + inner(u, v)) * dx
-stepper = FractionalTimeStepper(F, BirkSong(48), t, dt, u)
+F = (fd.inner(CaputoDerivative(u, 0.6), v) + fd.inner(u, v)) * fd.dx
+stepper = TimeMemoryStepper(F, BirkSong(48), t, dt, u)
 ```
 
-Increment `t` after each successful `advance()`. Representation error is
-controlled by the mode count, temporal error by `dt`, and algebraic error by
-the Firedrake solver parameters. See {doc}`refining`.
+Increment `t` after each successful `advance()`. See {doc}`refining` for
+which control to refine.
 
 ## Changing the representation
 
 Only one argument changes:
 
 ```python
-stepper = FractionalTimeStepper(F, Diethelm2008(48), t, dt, u)
+stepper = TimeMemoryStepper(F, Diethelm2008(48), t, dt, u)
 ```
 
 Equal mode counts do not imply equal error. To compare fairly, fix the
@@ -37,7 +36,7 @@ every available spectrum.
 Use direct history instead, with no quadrature spectrum to tune:
 
 ```python
-stepper = FractionalTimeStepper(F, FullHistory(), t, dt, u)
+stepper = TimeMemoryStepper(F, FullHistory(), t, dt, u)
 ```
 
 This stores one solution increment per accepted step, so cost grows with the
@@ -56,7 +55,7 @@ representation = SumOfExponentials(
     min_step=0.02,
     t_final=1.0,
 )
-stepper = FractionalTimeStepper(F, representation, t, dt, u)
+stepper = TimeMemoryStepper(F, representation, t, dt, u)
 ```
 
 The declared interval is checked during stepping. Lowering the timestep
@@ -68,7 +67,7 @@ therefore also means rebuilding the representation with the new `min_step`.
 recovers the prescribed solution $u=t$ from its analytic Caputo derivative:
 
 ```python
-stepper = FractionalTimeStepper(
+stepper = TimeMemoryStepper(
     F,
     SineDiffusive(128),
     t,
@@ -90,7 +89,7 @@ limitations.
 fields, which makes the memory available to PETSc:
 
 ```python
-stepper = FractionalTimeStepper(
+stepper = TimeMemoryStepper(
     F,
     BirkSong(8),
     t,
@@ -115,10 +114,10 @@ Switch only the marker:
 
 ```python
 F = (
-    inner(RiemannLiouvilleDerivative(u, alpha), v)
-    + inner(u, v)
-) * dx
-stepper = FractionalTimeStepper(F, BirkSong(48), t, dt, u)
+    fd.inner(RiemannLiouvilleDerivative(u, alpha), v)
+    + fd.inner(u, v)
+) * fd.dx
+stepper = TimeMemoryStepper(F, BirkSong(48), t, dt, u)
 ```
 
 The stepper evaluates
@@ -142,5 +141,5 @@ and fractional-integral initial data are not represented
 ## Exponential memory
 
 `ExponentialMemory` and `CaputoFabrizioOperator` are bounded-kernel
-fading-memory operators and use `TimeMemoryStepper`. See
+fading-memory operators that need no representation. See
 {ref}`exponential-memory`.

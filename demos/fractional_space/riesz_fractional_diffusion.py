@@ -15,8 +15,8 @@ from firedrake import (
 from yonderdrake import (
     BirkSong,
     CaputoDerivative,
-    FractionalTimeStepper,
     RieszFractionalLaplacian,
+    TimeMemoryStepper,
 )
 
 
@@ -41,7 +41,7 @@ def main() -> None:
     residual = (
         inner(CaputoDerivative(u, 0.55), v) + inner(spatial, v)
     ) * dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         BirkSong(8),
         t,

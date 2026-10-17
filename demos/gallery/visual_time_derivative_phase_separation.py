@@ -49,8 +49,8 @@ def main() -> None:
     from yonderdrake import (
         BirkSong,
         CaputoDerivative,
-        FractionalTimeStepper,
         RiemannLiouvilleDerivative,
+        TimeMemoryStepper,
     )
 
     configure_matplotlib(plt)
@@ -113,7 +113,7 @@ def main() -> None:
         )
     fractional_steppers = {}
     for name in ("Caputo", "Riemann–Liouville"):
-        fractional_steppers[name] = FractionalTimeStepper(
+        fractional_steppers[name] = TimeMemoryStepper(
             fractional_residuals[name],
             BirkSong(args.modes),
             time,

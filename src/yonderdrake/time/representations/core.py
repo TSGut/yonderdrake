@@ -22,7 +22,7 @@ _STARTING_CONDITION_ADVISORY = 1.0e8  # Float64 accuracy-saturation advisory.
 _CAYLEY_DEGENERATE_POWER = 1.0
 _JACOBI_DEGENERACY_TOLERANCE = 64.0 * np.finfo(np.float64).eps
 # Selection from a declared range never returns an exponent narrower than
-# Diethelm2008's published two, which is the best choice for narrow spans anyway
+# Diethelm's published two, which is the best choice for narrow spans anyway
 # and keeps the automatic path clear of the degenerate power. Beyond twelve
 # the rate span exceeds what float64 exponentials resolve.
 _CAYLEY_POWER_MIN = 2.0
@@ -763,7 +763,7 @@ class Jacobi(_JacobiRepresentation):
 
 
 class Diethelm2008(_JacobiRepresentation):
-    """Diethelm2008's Gauss-Jacobi improvement of the diffusive representation."""
+    """Diethelm's 2008 Gauss-Jacobi improvement of the diffusive representation."""
 
     _name = "Diethelm2008"
     _reference = "doi:10.1007/s11075-008-9193-8"

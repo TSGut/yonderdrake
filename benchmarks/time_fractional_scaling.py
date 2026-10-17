@@ -135,7 +135,7 @@ def _thermal_problem(
     time = fd.Constant(0.0)
     dt = fd.Constant(step_size)
 
-    from yonderdrake import CaputoDerivative, FractionalTimeStepper
+    from yonderdrake import CaputoDerivative, TimeMemoryStepper
 
     residual = (
         fd.inner(CaputoDerivative(field, 0.64), test)
@@ -143,7 +143,7 @@ def _thermal_problem(
         + 0.16 * fd.inner(field, test)
         - fd.inner(source, test)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         _representation(representation_name, nodes),
         time,
@@ -218,8 +218,8 @@ def _skullball_problem(
 
     from yonderdrake import (
         CaputoDerivative,
-        FractionalTimeStepper,
         Recurrence,
+        TimeMemoryStepper,
     )
 
     acceleration = (field - 2.0 * previous + older) / dt**2
@@ -238,7 +238,7 @@ def _skullball_problem(
         + fractional_damping
         + 0.96 * fd.inner(velocity, test) * fd.ds
     )
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         _representation(representation_name, nodes),
         time,

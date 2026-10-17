@@ -13,9 +13,9 @@ from yonderdrake import (  # noqa: E402
     AuxiliaryODE,
     CaputoDerivative,
     Diethelm2008,
-    FractionalTimeStepper,
     Recurrence,
     RiemannLiouvilleDerivative,
+    TimeMemoryStepper,
 )
 
 
@@ -82,7 +82,7 @@ def test_fixed_laplacian_outside_fractional_marker(
         * fd.dx
         + reaction * fd.inner(u, test) * fd.dx
     )
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         representation,
         time,

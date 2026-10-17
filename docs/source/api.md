@@ -36,10 +36,11 @@ Recurrence(interpolant="quadratic")
 AuxiliaryODE(scheme="backward_euler")
 Oscillator()
 
-FractionalTimeStepper(
+TimeMemoryStepper(
     F, representation, t, dt, u, *,
     formulation=None, u0=None, bcs=None,
     solver_parameters=None, appctx=None,
+    warn_initial_compatibility=True,
 )
 ```
 
@@ -50,10 +51,10 @@ FractionalTimeStepper(
 | Lubich CQ | Uniform-step BDF1 or BDF2. Starting corrections default to one for BDF1 and two for BDF2. `num_corrections` may be 0 through 16. Poorly conditioned correction systems emit `StartingCorrectionAdvisoryWarning` and record `starting_system_recommended=False`. Storage grows by one field per accepted step. |
 | Alikhanov L2-1$\sigma$ | Uniform-step Caputo formula with one shared $\alpha$. The complete residual is evaluated at $t_{n+\sigma}$, where $\sigma=1-\alpha/2$. Storage grows by one field per accepted step. |
 | Fast-oblivious CQ | Uniform-step BDF1 CQ with a Talbot contour, exact recent history, and dyadic older history. `num_levels` supports at most $2^{\mathtt{num\_levels}}-1$ steps. `nodes_per_level` is 4 through 64 and `direct_steps` is 6 through 4096. |
-| Diffusive representations | Positive-rate Birk-Song, Cayley, Jacobi, Diethelm2008, Jiang sum-of-exponentials, Diethelm2022, or Yuan-Agrawal spectra. `SineDiffusive` has a separate undamped oscillator spectrum. Equal mode counts do not imply equal accuracy. |
+| Diffusive representations | Positive-rate Birk-Song, Cayley, Jacobi, Diethelm2008, Jiang sum-of-exponentials, Diethelm2022, or Yuan-Agrawal spectra. `SineDiffusive` has a separate undamped oscillator spectrum. |
 | Recurrence | One or more markers on scalar or fixed-size vector continuous Lagrange fields. `interpolant="quadratic"` is the default and stores one additional physical field for the whole stepper, not one per mode. {doc}`theory/time-stepping` gives the interpolant orders. |
 | Auxiliary ODE | One marker on a scalar continuous Lagrange field. The monolithic $V^{m+1}$ solve uses backward Euler or trapezoidal stepping. Use this formulation when PETSc needs field access to the modes. |
-| Oscillator | `SineDiffusive` only. Stores position and velocity for every mode, then advances them with an exact rotation and linear Duhamel forcing. Available through the general time steppers. The Caputo-Wismer application uses positive-rate representations. |
+| Oscillator | `SineDiffusive` only. Stores position and velocity for every mode, then advances them with an exact rotation and linear Duhamel forcing. Available through `TimeMemoryStepper`. The Caputo-Wismer application uses positive-rate representations. |
 | Time | Positive variable `dt`. The residual is evaluated at `t + dt`. `advance()` updates `u` and history. The caller updates `t`. |
 | State | History, statistics, reset, collective checkpointing, and Jacobian invalidation. |
 
@@ -136,19 +137,12 @@ examples.
 ```python
 ExponentialMemory(u, decay_rate)
 CaputoFabrizioOperator(u, alpha, *, normalization=1.0)
-
-TimeMemoryStepper(
-    F, t, dt, u, *,
-    representation=None, formulation=None, u0=None, bcs=None,
-    solver_parameters=None, appctx=None,
-    warn_initial_compatibility=True,
-)
 ```
 
 | Topic | Support |
 | --- | --- |
 | Operator | Single bounded-kernel fading-memory state. See {ref}`exponential memory <exponential-memory>`. |
-| Stepper | `TimeMemoryStepper` only. `FractionalTimeStepper` raises `ValueError`, and `FullHistory` cannot be combined with it. |
+| Stepper | `TimeMemoryStepper` with `representation=None`, or with a diffusive representation when fractional markers are also present. `FullHistory`, the direct CQ methods, and `SineDiffusive` cannot be combined with it. |
 | Mixing | The recurrence formulation may combine exponential and fractional markers. `representation` supplies the spectrum for the fractional terms. `AuxiliaryODE` accepts one marker. |
 | Initial data | The mode starts at zero, so construction emits `ExponentialMemoryCompatibilityWarning`. Suppress with `warn_initial_compatibility=False`. |
 | Caputo-Fabrizio | `normalization` is $B(\alpha)$. The operator is built as a rescaled `ExponentialMemory`, so it carries no quadrature error of its own. |
@@ -172,7 +166,7 @@ SpectralFractionalLaplacian(
 | Solvers | Shift and adjoint mass solves have separate PETSc dictionaries. Defaults use LU for small reference problems. |
 | Diagnostics | Nodes, model estimate, setups, assemblies, solves, and reuse. |
 
-## Riesz/restricted fractional Laplacian
+## Zero-exterior Riesz fractional Laplacian
 
 ```python
 RieszFractionalLaplacian(
@@ -189,7 +183,7 @@ RieszFractionalLaplacian(
 | Scope | Scalar CG1 or CG2 on affine 2D triangles or 3D tetrahedra, $0<s<1$, zero exterior extension. |
 | Boundary | Complete homogeneous `bcs` are required for $s\geq1/2$. |
 | Topology | Periodic and overlapping cell geometries are unsupported. |
-| Source evaluation | `endpoint` applies analytic boundary formulas everywhere. `hybrid` uses source-cell Gauss quadrature on admissible far pairs and near 3D pairs uses boundary reduction with edge quadrature or Appell $F_1$ according to projected separation. |
+| Source evaluation | `endpoint` applies analytic boundary formulas everywhere. `hybrid` uses source-cell Gauss quadrature on admissible far pairs. Near pairs use the analytic edge formula in 2D, and boundary reduction with edge quadrature or Appell $F_1$ in 3D, according to projected separation. |
 | Source quadrature | `source_quadrature_degree` controls `hybrid`. It is inert under `endpoint`. |
 | Target quadrature | Default `boundary` degree 6 is singularity fitted, using edge sectors in 2D and face sectors in 3D. `ordinary` uses Duffy tensor Gauss. |
 | `matfree` | Uncompressed MPI backend with $O(N^2)$ work and replicated sources. |
@@ -198,8 +192,6 @@ RieszFractionalLaplacian(
 | H-matrix controls | ACA tolerance, admissibility, and leaf size. |
 | Mass solve | Configurable, with CG/Jacobi as the default. |
 | Diagnostics | Storage, timings, solves, blocks, ranks, and compression. |
-
-Refine source quadrature, target quadrature, and compression independently.
 
 ## Periodic Fourier fractional Laplacian
 

@@ -46,7 +46,8 @@ applications are developed in the {doc}`Caputo-Wismer imaging application
 
 [visual_time_derivative_phase_separation.py](https://github.com/TSGut/yonderdrake/blob/main/demos/gallery/visual_time_derivative_phase_separation.py)
 solves Allen-Cahn on a
-sphere with three different time derivatives side by side.
+sphere with classical, Caputo, and Riemann-Liouville time derivatives side
+by side.
 
 <figure class="doc-video">
   <video autoplay controls loop muted playsinline preload="metadata"
@@ -188,25 +189,25 @@ $$
 
 The blue start is the source and the black goal star is the sink. The forcing
 has zero integral. The classical and spectral operators use reflecting walls,
-and their potentials have zero mean. The restricted Riesz operator retains
+and their potentials have zero mean. The zero-exterior Riesz operator retains
 its zero-exterior realization. The classical construction is inspired by
 [Connolly, Burns, and Weiss][maze-paper] and the
 [FiniteVolumeMethod.jl maze tutorial][finite-volume-maze].
 
 The classical flux $-\nabla u$ follows the unique connected route from start
 to goal and vanishes in dead ends. The spectral field follows the topology of
-the Neumann Laplacian but redistributes the response nonlocally. The restricted
+the Neumann Laplacian but redistributes the response nonlocally. The zero-exterior
 Riesz field can couple corridors that are close in Euclidean space but
 separated by a wall. The plots show $|\nabla u|$, which reveals where each
 equilibrium field changes through the maze.
 
 ```{figure} ../_static/gallery/fractional-maze.png
-:alt: Classical, spectral fractional, and restricted Riesz gradient magnitudes in the same maze
+:alt: Classical, spectral fractional, and zero-exterior Riesz gradient magnitudes in the same maze
 :class: doc-figure
 :target: ../_static/gallery/fractional-maze.png
 
 Equilibrium gradient magnitude for the classical, spectral-fractional, and
-restricted Riesz realizations.
+zero-exterior Riesz realizations.
 ```
 
 The same comparison can be viewed as a transient problem. Starting from zero,
@@ -223,11 +224,11 @@ the animation.
 
 <figure class="doc-video">
   <video autoplay controls loop muted playsinline preload="metadata"
-         aria-label="Classical, spectral fractional, and restricted Riesz diffusion evolving through a maze">
+         aria-label="Classical, spectral fractional, and zero-exterior Riesz diffusion evolving through a maze">
     <source src="../_static/gallery/fractional-maze.mp4" type="video/mp4">
     <a href="../_static/gallery/fractional-maze.mp4">Download the fractional-maze animation.</a>
   </video>
-  <figcaption>Transient classical, spectral fractional, and restricted Riesz responses to the same start source and goal sink.</figcaption>
+  <figcaption>Transient classical, spectral fractional, and zero-exterior Riesz responses to the same start source and goal sink.</figcaption>
 </figure>
 
 (periodic-gyroid-gallery)=
@@ -248,6 +249,7 @@ gyroid scaffold. Both fields use the 3D `PeriodicFractionalLaplacian`.
   <figcaption>The zero isosurfaces rotate together while their small-scale structure dissipates at different rates. The black slice contours track the same level set through each periodic cell.</figcaption>
 </figure>
 
+(fractional-schrodinger-gallery)=
 ### Fractional Schrödinger on an aperiodic monotile
 
 [visual_fractional_schrodinger_monotile.py](https://github.com/TSGut/yonderdrake/blob/main/demos/gallery/visual_fractional_schrodinger_monotile.py)

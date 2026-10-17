@@ -34,15 +34,21 @@ mean rebuilding the problem each time.
 
 ## Features
 
-- Caputo and initialized Riemann-Liouville fractional-in-time derivatives with various methods including static memory diffusive representations, full-history stepping along with additional implementations from the literature for easy comparisons.
-- General single-timescale exponential memory operators, including a convenience wrapper for the Caputo-Fabrizio operator.
-- Homogeneous-Dirichlet spectral, zero-exterior Riesz, and periodic Fourier
-  fractional Laplacians.
-- 2D and 3D Caputo-Wismer waves with heterogeneous density, driven sources,
-  impedance boundaries, PML, configurable sensor arrays, exact adjoints, time
-  reversal, and regularized reconstruction.
-- Variable timesteps, PETSc solver configuration, MPI execution, and checkpoint/restart.
-- Compatibility with [Irksome](https://www.firedrakeproject.org/Irksome/index.html) for classical time stepping alongside Yonderdrake operators.
+- Caputo and initialized Riemann-Liouville time derivatives with full-history stepping, direct convolution quadrature or static memory with $O(m)$ storage.
+- Single-exponential memory, including a
+  labelled Caputo-Fabrizio operator.
+- Spectral (Dirichlet or Neumann), zero-exterior Riesz, and periodic Fourier
+  fractional Laplacians, each with its corresponding boundary or exterior realization.
+  The Riesz operator supports CG1 and CG2 on triangular 2D and tetrahedral 3D
+  meshes.
+- Direct 2D and 3D Caputo-Wismer wave support for power-law attenuation, with
+  heterogeneous density, volume and boundary sources, impedance boundaries,
+  PML, user-defined sensor arrays, exact adjoints, time reversal, and
+  regularized inverse reconstruction.
+- Variable steps, MPI, PETSc options, and checkpoint/restart.
+- Spatial fractional operators combined with
+  [Irksome](https://www.firedrakeproject.org/Irksome/index.html) for classical
+  time integration.
 
 ## Examples
 

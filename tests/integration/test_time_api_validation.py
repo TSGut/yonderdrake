@@ -10,12 +10,12 @@ from yonderdrake import (  # noqa: E402
     AuxiliaryODE,
     BirkSong,
     CaputoDerivative,
-    FractionalTimeStepper,
     FullHistory,
     Oscillator,
     Recurrence,
     RiemannLiouvilleDerivative,
     SineDiffusive,
+    TimeMemoryStepper,
 )
 
 TIME_VARIANTS = [
@@ -49,7 +49,7 @@ def make_stepper(
     options = {}
     if formulation is not None:
         options["formulation"] = formulation
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         representation,
         time,
@@ -78,7 +78,7 @@ def test_marker_must_wrap_stepper_solution(
     if formulation is not None:
         options["formulation"] = formulation
     with pytest.raises(ValueError, match="stepper solution"):
-        FractionalTimeStepper(
+        TimeMemoryStepper(
             residual,
             representation,
             fd.Constant(0.0),
@@ -103,7 +103,7 @@ def test_time_stepping_requires_continuous_lagrange(
     if formulation is not None:
         options["formulation"] = formulation
     with pytest.raises(NotImplementedError, match="continuous Lagrange"):
-        FractionalTimeStepper(
+        TimeMemoryStepper(
             residual,
             representation,
             fd.Constant(0.0),
@@ -126,7 +126,7 @@ def test_auxiliary_requires_one_scalar_marker() -> None:
     ) * fd.dx
     for residual in (ordinary, multiple):
         with pytest.raises(ValueError, match="exactly one"):
-            FractionalTimeStepper(
+            TimeMemoryStepper(
                 residual,
                 BirkSong(2),
                 fd.Constant(0.0),
@@ -140,7 +140,7 @@ def test_auxiliary_requires_one_scalar_marker() -> None:
     vector_test = fd.TestFunction(vector_space)
     residual = fd.inner(CaputoDerivative(vector, 0.5), vector_test) * fd.dx
     with pytest.raises(NotImplementedError, match="scalar"):
-        FractionalTimeStepper(
+        TimeMemoryStepper(
             residual,
             BirkSong(2),
             fd.Constant(0.0),
@@ -155,7 +155,7 @@ def test_auxiliary_requires_one_scalar_marker() -> None:
         + fd.inner(trial, test)
     ) * fd.dx
     with pytest.raises(ValueError, match="one test argument"):
-        FractionalTimeStepper(
+        TimeMemoryStepper(
             residual,
             BirkSong(2),
             fd.Constant(0.0),
@@ -176,7 +176,7 @@ def test_formulation_and_representation_are_validated() -> None:
     dt = fd.Constant(0.1)
 
     with pytest.raises(TypeError, match="formulation"):
-        FractionalTimeStepper(
+        TimeMemoryStepper(
             residual,
             BirkSong(2),
             time,
@@ -185,7 +185,7 @@ def test_formulation_and_representation_are_validated() -> None:
             formulation=object(),
         )
     with pytest.raises(NotImplementedError, match="eliminated"):
-        FractionalTimeStepper(
+        TimeMemoryStepper(
             residual,
             FullHistory(),
             time,
@@ -194,9 +194,9 @@ def test_formulation_and_representation_are_validated() -> None:
             formulation=AuxiliaryODE(),
         )
     with pytest.raises(TypeError, match="representation"):
-        FractionalTimeStepper(residual, object(), time, dt, u)
+        TimeMemoryStepper(residual, object(), time, dt, u)
     with pytest.raises(TypeError, match="representation"):
-        FractionalTimeStepper(
+        TimeMemoryStepper(
             residual,
             object(),
             time,
@@ -206,7 +206,7 @@ def test_formulation_and_representation_are_validated() -> None:
         )
     ordinary = fd.inner(u, test) * fd.dx
     with pytest.raises(ValueError, match="at least one"):
-        FractionalTimeStepper(
+        TimeMemoryStepper(
             ordinary,
             FullHistory(),
             time,
@@ -350,7 +350,7 @@ def test_riemann_liouville_time_must_exceed_lower_limit(formulation) -> None:
         RiemannLiouvilleDerivative(u, 0.5),
         test,
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         BirkSong(2),
         time,
@@ -400,7 +400,7 @@ def test_auxiliary_failed_solve_restores_physical_and_mode_state() -> None:
         fd.inner(CaputoDerivative(u, 0.5), test)
         + fd.inner(u**3 - 10.0, test)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         BirkSong(2),
         fd.Constant(0.0),

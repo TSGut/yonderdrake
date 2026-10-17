@@ -1,4 +1,4 @@
-"""Zero-exterior Riesz/restricted fractional Laplacian."""
+"""Zero-exterior Riesz fractional Laplacian."""
 
 from yonderdrake.riesz.operator import RieszFractionalLaplacian
 

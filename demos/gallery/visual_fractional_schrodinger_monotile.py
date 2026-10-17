@@ -107,8 +107,8 @@ def main() -> None:
     from yonderdrake import (
         CaputoDerivative,
         Diethelm2008,
-        FractionalTimeStepper,
         SpectralFractionalLaplacian,
+        TimeMemoryStepper,
     )
 
     configure_matplotlib(plt)
@@ -243,7 +243,7 @@ def main() -> None:
         CaputoDerivative(time_state, args.time_order),
         time_test,
     ) * fd.dx + local_hamiltonian_form(time_state, time_test)
-    time_stepper = FractionalTimeStepper(
+    time_stepper = TimeMemoryStepper(
         time_form,
         Diethelm2008(args.modes),
         time,
@@ -270,7 +270,7 @@ def main() -> None:
         )
         * fd.dx
     )
-    fully_stepper = FractionalTimeStepper(
+    fully_stepper = TimeMemoryStepper(
         fully_form,
         Diethelm2008(args.modes),
         time,

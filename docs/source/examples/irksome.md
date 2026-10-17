@@ -46,7 +46,7 @@ derivative. Use a matrix-free Jacobian for this composition, as in the example
 above.
 
 Irksome is optional and supplies the classical time integrator. Use
-`FractionalTimeStepper` to evolve a residual containing a fractional time
+`TimeMemoryStepper` to evolve a residual containing a fractional time
 marker. The
 {doc}`../gallery/index` shows both compositions.
 

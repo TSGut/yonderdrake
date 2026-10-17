@@ -15,10 +15,10 @@ from yonderdrake import (  # noqa: E402
     AlikhanovL21Sigma,
     CaputoDerivative,
     FastObliviousCQ,
-    FractionalTimeStepper,
     FullHistory,
     LubichCQ,
     RiemannLiouvilleDerivative,
+    TimeMemoryStepper,
 )
 
 
@@ -34,7 +34,7 @@ def make_relaxation(
     time = fd.Constant(0.0)
     dt = fd.Constant(0.1)
     residual = (fd.inner(CaputoDerivative(u, alpha), test) + fd.inner(u, test)) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         FullHistory(),
         time,
@@ -111,7 +111,7 @@ def fast_cq_checkpoint_file_restart(path: Path, comm) -> None:
             u,
             time,
             dt,
-            FractionalTimeStepper(
+            TimeMemoryStepper(
                 residual,
                 representation,
                 time,
@@ -155,7 +155,7 @@ def test_variable_step_matches_independent_full_history() -> None:
     residual = (
         fd.inner(CaputoDerivative(u, alpha), test) + reaction * fd.inner(u, test)
     ) * fd.dx
-    stepper = FractionalTimeStepper(residual, FullHistory(), time, dt, u)
+    stepper = TimeMemoryStepper(residual, FullHistory(), time, dt, u)
 
     times = [0.0]
     increments: list[float] = []
@@ -202,7 +202,7 @@ def test_linear_history_is_integrated_exactly_on_variable_steps() -> None:
     residual = (
         fd.inner(CaputoDerivative(u, alpha), test) - fd.inner(source, test)
     ) * fd.dx
-    stepper = FractionalTimeStepper(residual, FullHistory(), time, dt, u)
+    stepper = TimeMemoryStepper(residual, FullHistory(), time, dt, u)
 
     target = 0.0
     for step_size in (0.1, 0.07, 0.2, 0.03):
@@ -236,7 +236,7 @@ def test_multiple_orders_share_the_physical_history() -> None:
         )
         + fd.inner(u, test)
     ) * fd.dx
-    stepper = FractionalTimeStepper(residual, FullHistory(), time, dt, u)
+    stepper = TimeMemoryStepper(residual, FullHistory(), time, dt, u)
     stepper.advance()
 
     implicit = sum(
@@ -262,7 +262,7 @@ def power_solution_error(step_size: float) -> float:
     residual = (
         fd.inner(CaputoDerivative(u, alpha), test) - fd.inner(source, test)
     ) * fd.dx
-    stepper = FractionalTimeStepper(residual, FullHistory(), time, dt, u)
+    stepper = TimeMemoryStepper(residual, FullHistory(), time, dt, u)
     coefficient = gamma(power + 1.0) / gamma(power + 1.0 - alpha)
     for index in range(1, round(1.0 / step_size) + 1):
         target = index * step_size
@@ -289,7 +289,7 @@ def cq_power_solution_error(
     residual = (
         fd.inner(CaputoDerivative(u, alpha), test) - fd.inner(source, test)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         LubichCQ(
             order="bdf2",
@@ -327,7 +327,7 @@ def alikhanov_power_solution_error(
         + fd.inner(u, test)
         - fd.inner(source, test)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         AlikhanovL21Sigma(),
         time,
@@ -359,7 +359,7 @@ def fast_cq_power_solution_error(
     ) * fd.dx
     steps = round(1.0 / step_size)
     levels = max(2, steps.bit_length())
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         FastObliviousCQ(
             num_levels=levels,
@@ -427,7 +427,7 @@ def test_lubich_cq_rejects_variable_steps_without_committing() -> None:
     u, time, dt, _ = make_relaxation(mesh)
     test = fd.TestFunction(u.function_space())
     residual = (fd.inner(CaputoDerivative(u, 0.6), test) + fd.inner(u, test)) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         LubichCQ(),
         time,
@@ -457,7 +457,7 @@ def test_lubich_cq_checkpoint_round_trip() -> None:
         residual = (
             fd.inner(CaputoDerivative(u, 0.6), test) + fd.inner(u, test)
         ) * fd.dx
-        return u, FractionalTimeStepper(
+        return u, TimeMemoryStepper(
             residual,
             LubichCQ(),
             time,
@@ -508,7 +508,7 @@ def test_alikhanov_rejects_incompatible_markers_and_variable_steps() -> None:
         + fd.inner(CaputoDerivative(u, 0.6), test)
     ) * fd.dx
     with pytest.raises(NotImplementedError, match="shared alpha"):
-        FractionalTimeStepper(
+        TimeMemoryStepper(
             mixed_order,
             AlikhanovL21Sigma(),
             time,
@@ -523,7 +523,7 @@ def test_alikhanov_rejects_incompatible_markers_and_variable_steps() -> None:
         * fd.dx
     )
     with pytest.raises(NotImplementedError, match="Caputo"):
-        FractionalTimeStepper(
+        TimeMemoryStepper(
             riemann_liouville,
             AlikhanovL21Sigma(),
             time,
@@ -532,7 +532,7 @@ def test_alikhanov_rejects_incompatible_markers_and_variable_steps() -> None:
         )
 
     residual = (fd.inner(CaputoDerivative(u, 0.5), test) + fd.inner(u, test)) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         AlikhanovL21Sigma(),
         time,
@@ -555,7 +555,7 @@ def test_alikhanov_checkpoint_round_trip() -> None:
     time = fd.Constant(0.0)
     dt = fd.Constant(0.05)
     residual = (fd.inner(CaputoDerivative(u, 0.6), test) + fd.inner(u, test)) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         AlikhanovL21Sigma(),
         time,
@@ -607,7 +607,7 @@ def test_fast_oblivious_cq_checkpoint_round_trip() -> None:
         residual = (
             fd.inner(CaputoDerivative(u, 0.6), test) + fd.inner(u, test)
         ) * fd.dx
-        stepper = FractionalTimeStepper(
+        stepper = TimeMemoryStepper(
             residual,
             representation,
             time,
@@ -641,7 +641,7 @@ def test_fast_oblivious_cq_lifecycle_and_limits() -> None:
     time = fd.Constant(0.0)
     dt = fd.Constant(0.05)
     residual = (fd.inner(CaputoDerivative(u, alpha), test) + fd.inner(u, test)) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         FastObliviousCQ(
             num_levels=3,
@@ -691,7 +691,7 @@ def test_fast_oblivious_cq_riemann_liouville_trace() -> None:
     def build(marker):
         u = fd.Function(space).assign(1.0)
         residual = fd.inner(marker(u, 0.6), test) * fd.dx
-        return u, FractionalTimeStepper(
+        return u, TimeMemoryStepper(
             residual,
             FastObliviousCQ(
                 num_levels=3,
@@ -727,7 +727,7 @@ def test_direct_methods_reset_and_reject_nonuniform_checkpoints() -> None:
         residual = (
             fd.inner(CaputoDerivative(u, 0.6), test) + fd.inner(u, test)
         ) * fd.dx
-        stepper = FractionalTimeStepper(
+        stepper = TimeMemoryStepper(
             residual,
             representation,
             time,
@@ -759,7 +759,7 @@ def test_lubich_cq_riemann_liouville_trace_and_fast_cq_rollback() -> None:
     dt = fd.Constant(0.05)
     u = fd.Function(space).assign(1.0)
     residual = fd.inner(RiemannLiouvilleDerivative(u, 0.6), test) * fd.dx
-    lubich = FractionalTimeStepper(
+    lubich = TimeMemoryStepper(
         residual,
         LubichCQ(order="bdf1", num_corrections=0),
         time,
@@ -774,7 +774,7 @@ def test_lubich_cq_riemann_liouville_trace_and_fast_cq_rollback() -> None:
     fast_residual = (
         fd.inner(CaputoDerivative(fast_u, 0.6), test) + fd.inner(fast_u, test)
     ) * fd.dx
-    fast = FractionalTimeStepper(
+    fast = TimeMemoryStepper(
         fast_residual,
         FastObliviousCQ(
             num_levels=3,
@@ -881,7 +881,7 @@ def test_failure_and_time_validation_do_not_append_history() -> None:
     residual = (
         fd.inner(CaputoDerivative(u, 0.5), test) + fd.inner(u**3 - 10.0, test)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         FullHistory(),
         time,
@@ -917,7 +917,7 @@ def test_riemann_liouville_constant_uses_exact_initial_trace() -> None:
     residual = (
         fd.inner(RiemannLiouvilleDerivative(u, alpha), test) - fd.inner(source, test)
     ) * fd.dx
-    stepper = FractionalTimeStepper(residual, FullHistory(), time, dt, u)
+    stepper = TimeMemoryStepper(residual, FullHistory(), time, dt, u)
 
     target = 0.0
     for step_size in (0.1, 0.04, 0.2):

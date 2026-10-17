@@ -23,7 +23,6 @@ EXPECTED_PUBLIC = {
     "ExponentialMemory",
     "ExponentialMemoryCompatibilityWarning",
     "FastObliviousCQ",
-    "FractionalTimeStepper",
     "FullHistory",
     "Jacobi",
     "LubichCQ",
@@ -107,13 +106,10 @@ def test_external_operator_matrix_builder_is_required() -> None:
 
 @pytest.mark.unit
 def test_target_signatures_remain_inspectable() -> None:
-    signature = inspect.signature(yonderdrake.FractionalTimeStepper)
+    signature = inspect.signature(yonderdrake.TimeMemoryStepper)
     assert list(signature.parameters)[:5] == ["F", "representation", "t", "dt", "u"]
     assert signature.parameters["formulation"].default is None
-    memory = inspect.signature(yonderdrake.TimeMemoryStepper)
-    assert list(memory.parameters)[:4] == ["F", "t", "dt", "u"]
-    assert memory.parameters["representation"].default is None
-    assert memory.parameters["warn_initial_compatibility"].default is True
+    assert signature.parameters["warn_initial_compatibility"].default is True
     spectral = inspect.signature(yonderdrake.SpectralFractionalLaplacian)
     assert list(spectral.parameters)[:2] == ["u", "s"]
     assert spectral.parameters["bcs"].default is None

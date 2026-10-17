@@ -12,7 +12,7 @@ from yonderdrake.applications.caputo_wismer.sources import (
 )
 from yonderdrake.time.marker import CaputoDerivative
 from yonderdrake.time.representations import BirkSong, SineDiffusive
-from yonderdrake.time.stepper import FractionalTimeStepper
+from yonderdrake.time.stepper import TimeMemoryStepper
 
 
 class CaputoWismerStepper:
@@ -160,7 +160,7 @@ class CaputoWismerStepper:
             - fd.inner(self.boundary_source, test) * fd.ds
         )
         self.residual = residual
-        self._stepper = FractionalTimeStepper(
+        self._stepper = TimeMemoryStepper(
             residual,
             self.representation,
             t,

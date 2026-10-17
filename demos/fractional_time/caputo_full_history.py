@@ -10,7 +10,7 @@ from firedrake import (
     inner,
 )
 
-from yonderdrake import CaputoDerivative, FractionalTimeStepper, FullHistory
+from yonderdrake import CaputoDerivative, FullHistory, TimeMemoryStepper
 
 
 def main() -> None:
@@ -23,7 +23,7 @@ def main() -> None:
     dt = Constant(0.02)
 
     residual = (inner(CaputoDerivative(u, 0.6), v) + inner(u, v)) * dx
-    stepper = FractionalTimeStepper(residual, FullHistory(), t, dt, u)
+    stepper = TimeMemoryStepper(residual, FullHistory(), t, dt, u)
 
     while float(t) < 1.0 - 0.5 * float(dt):
         stepper.advance()

@@ -86,11 +86,5 @@ The method requires a uniform timestep. Increase `nodes_per_level` to check
 contour convergence independently of timestep convergence. Increase
 `num_levels` before a run if its configured maximum step count is too small.
 
-## Choosing a time-memory method
-
-`BirkSong` remains the general default because it has fixed storage and accepts
-variable timesteps. Use `FullHistory` as a direct variable-step reference.
-Use BDF2 `LubichCQ` for classical uniform-grid convolution
-quadrature, and `AlikhanovL21Sigma` when the offset second-order PDE formula is
-appropriate. Use fast-oblivious CQ for long uniform-grid histories where its
-logarithmic scaling outweighs its contour-state constants.
+To choose between these and the diffusive representations, see
+{doc}`../methods`.

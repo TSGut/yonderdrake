@@ -16,4 +16,4 @@ and locally tested at 2026.0.0.
 Intel macOS and native Windows are untested. Windows users can use WSL.
 
 For now, complex PETSc builds are rejected. Use coupled real fields, as in the
-{doc}`Schrödinger demo <gallery/index>`. See the {doc}`api` for Riesz limits.
+{ref}`Schrödinger demo <fractional-schrodinger-gallery>`. See the {doc}`api` for Riesz limits.

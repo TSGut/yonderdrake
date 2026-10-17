@@ -18,7 +18,7 @@ from firedrake import (
     norm,
 )
 
-from yonderdrake import BirkSong, CaputoDerivative, FractionalTimeStepper
+from yonderdrake import BirkSong, CaputoDerivative, TimeMemoryStepper
 
 
 def make_stepper(mesh, initial_value: float):
@@ -30,7 +30,7 @@ def make_stepper(mesh, initial_value: float):
     residual = (
         inner(CaputoDerivative(u, 0.6), test) + inner(u, test)
     ) * dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         BirkSong(12),
         time,

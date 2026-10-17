@@ -3,6 +3,9 @@
 These comparisons show how the numerical controls affect accuracy, setup
 cost, repeated work, and storage. Absolute timings depend on the machine,
 mesh, solver configuration, and MPI layout. The trends are the useful part.
+Performance drivers warm each application or operator once before recording
+cases, then time long enough to avoid reporting sub-millisecond single-call
+noise.
 
 The [benchmark sources and recorded CSV data](https://github.com/TSGut/yonderdrake/tree/main/benchmarks)
 are available for reproducing the figures or making a comparison on different
@@ -197,7 +200,7 @@ duration, even when the cost of each step is unchanged.
 For a field with $N$ degrees of freedom and one fractional term, static
 memory stores $LN$ mode values. Doubling $L$ therefore doubles that memory
 state. Multiple fractional terms contribute their own mode fields. See
-{doc}`../performance` for the storage requirements of the other formulations
+{ref}`memory-storage` for the storage requirements of the other formulations
 and spatial operators.
 
 ## Spatial fractional operators
@@ -292,3 +295,21 @@ $10^{-5}$ for the tested tolerance. Its construction is cheaper than dense
 assembly and its repeated action is much cheaper than recomputing the
 matrix-free integral. The crossover depends on problem geometry, tolerance,
 mesh size, and how often the operator is applied.
+
+(memory-storage)=
+## Storage
+
+Stored state for $N$ physical degrees of freedom and $L$ memory modes:
+
+| Method or operator | Stored state |
+| --- | --- |
+| Recurrence | $LN$ mode values per fractional term, independent of timestep count |
+| Full history | One $N$-value increment per accepted step |
+| Auxiliary ODE | $(L+1)N$ mixed values plus committed-state copies |
+| Sine diffusive oscillator | $2LN$ mode values per fractional term, independent of timestep count |
+| Spectral `stream` | Physical work vectors and two shifted solvers |
+| Spectral `all` | One matrix and KSP per sinc shift |
+| Riesz dense | $N^2$ weak entries |
+| Riesz matrix-free | No $N^2$ matrix. Global source geometry and the current coefficient vector are replicated |
+| Riesz H-matrix | Local dense near blocks and low-rank far factors |
+| Periodic Fourier | Distributed grid and Fourier work arrays |

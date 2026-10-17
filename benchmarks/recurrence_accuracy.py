@@ -77,8 +77,8 @@ def _power_measurement(
     from yonderdrake import (
         BirkSong,
         CaputoDerivative,
-        FractionalTimeStepper,
         Recurrence,
+        TimeMemoryStepper,
     )
 
     mesh = fd.UnitIntervalMesh(1)
@@ -91,7 +91,7 @@ def _power_measurement(
     residual = (
         fd.inner(CaputoDerivative(solution, alpha), test) - fd.inner(source, test)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         BirkSong(num_modes),
         time,
@@ -385,8 +385,8 @@ def _grading_measurement(
     from yonderdrake import (
         BirkSong,
         CaputoDerivative,
-        FractionalTimeStepper,
         Recurrence,
+        TimeMemoryStepper,
     )
 
     mesh = fd.UnitIntervalMesh(1)
@@ -398,7 +398,7 @@ def _grading_measurement(
     residual = (
         fd.inner(CaputoDerivative(solution, alpha), test) + fd.inner(solution, test)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         BirkSong(num_modes),
         time,
@@ -534,7 +534,7 @@ def _auxiliary_measurement(
         AuxiliaryODE,
         BirkSong,
         CaputoDerivative,
-        FractionalTimeStepper,
+        TimeMemoryStepper,
     )
 
     mesh = fd.UnitIntervalMesh(1)
@@ -547,7 +547,7 @@ def _auxiliary_measurement(
     residual = (
         fd.inner(CaputoDerivative(solution, alpha), test) - fd.inner(source, test)
     ) * fd.dx
-    stepper = FractionalTimeStepper(
+    stepper = TimeMemoryStepper(
         residual,
         BirkSong(num_modes),
         time,

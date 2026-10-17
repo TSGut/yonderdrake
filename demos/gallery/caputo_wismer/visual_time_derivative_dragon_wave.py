@@ -196,7 +196,7 @@ def main() -> None:
     from yonderdrake import (
         CaputoDerivative,
         Diethelm2008,
-        FractionalTimeStepper,
+        TimeMemoryStepper,
     )
 
     configure_matplotlib(plt)
@@ -293,7 +293,7 @@ def main() -> None:
             )
             * fd.dx
         )
-        fractional_steppers[name] = FractionalTimeStepper(
+        fractional_steppers[name] = TimeMemoryStepper(
             residual,
             Diethelm2008(args.modes),
             time,

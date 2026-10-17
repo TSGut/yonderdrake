@@ -46,7 +46,7 @@ periodic mesh required by its discrete Fourier transform.
 ```
 
 The {ref}`maze gallery experiment <fractional-maze-gallery>` gives another
-comparison of the classical, spectral, and restricted Riesz operators on the
+comparison of the classical, spectral, and zero-exterior Riesz operators on the
 same domain.
 
 ## Spectral, Dirichlet or Neumann
@@ -61,20 +61,15 @@ Lu = SpectralFractionalLaplacian(
     sinc_truncation_target=1.0e-6,
     shift_cache="all",
 )
-F = inner(CaputoDerivative(u, alpha), v) * dx + inner(Lu, v) * dx
+F = (fd.inner(CaputoDerivative(u, alpha), v) + fd.inner(Lu, v)) * fd.dx
 ```
 
 Omit `bcs` for natural homogeneous Neumann conditions. Constants then form the
 zero eigenspace. A steady problem needs compatible forcing and a fixed mean,
 as in the {ref}`maze gallery experiment <fractional-maze-gallery>`.
 
-The {ref}`Koch snowflake <fractional-snowflake-gallery>` and
-{ref}`maze <fractional-maze-gallery>` gallery experiments show the spectral
-operator evolving fields on nonrectangular domains.
-
-Tighten `sinc_truncation_target` on a fixed mesh before measuring
-finite-element convergence, and inspect `Lu.diagnostics()` for node count and
-shifted-solver reuse.
+Inspect `Lu.diagnostics()` for node count and shifted-solver reuse. The
+refinement order is in {doc}`refining`.
 
 Use `shift_cache="all"` for repeated small problems and `"stream"` for bounded
 storage.
@@ -91,21 +86,19 @@ This uses `target_quadrature_degree=6`, the boundary-adapted rule, and the matri
 backend. The function is extended by zero outside the polygonal or polyhedral
 domain.
 
-The supported spaces are scalar CG1 and CG2 on affine triangles in 2D or
-tetrahedra in 3D. Periodic or overlapping geometries are rejected. For
-$s\geq1/2$, pass complete homogeneous `bcs`. A nonzero trace has infinite
-zero-extension energy.
+For $s\geq1/2$, pass complete homogeneous `bcs`. Supported spaces and meshes
+are listed in {doc}`../api`.
 
 A three-dimensional problem uses the same interface:
 
 ```python
-mesh = UnitCubeMesh(12, 12, 12)
-V = FunctionSpace(mesh, "CG", 2)
-x, y, z = SpatialCoordinate(mesh)
-u = Function(V).interpolate(x * (1 - x) * y * (1 - y) * z * (1 - z))
-bc = DirichletBC(V, 0.0, "on_boundary")
+mesh = fd.UnitCubeMesh(12, 12, 12)
+V = fd.FunctionSpace(mesh, "CG", 2)
+x, y, z = fd.SpatialCoordinate(mesh)
+u = fd.Function(V).interpolate(x * (1 - x) * y * (1 - y) * z * (1 - z))
+bc = fd.DirichletBC(V, 0.0, "on_boundary")
 Lu = RieszFractionalLaplacian(
-    u, 0.7, bcs=bc, assembly="hmatrix",
+    u, 0.7, bcs=bc, assembly="hmatrix", compression_tolerance=1e-8,
 )
 ```
 
@@ -118,15 +111,6 @@ The {ref}`Koch snowflake <fractional-snowflake-gallery>` and
 {ref}`maze <fractional-maze-gallery>` gallery experiments compare this
 zero-exterior realization with the classical and spectral operators.
 
-For larger problems, switch the backend and refine compression separately from
-quadrature:
-
-```python
-Lu = RieszFractionalLaplacian(
-    u, 0.3, bcs=bc, assembly="hmatrix", compression_tolerance=1e-8,
-)
-```
-
 Backend trade-offs are tabulated in {doc}`../theory/riesz-laplacian`.
 
 ## Periodic Fourier
@@ -135,23 +119,23 @@ Use a fully periodic uniform interval, quadrilateral rectangle, or hexahedral
 box:
 
 ```python
-mesh = PeriodicRectangleMesh(
-    32, 24, 2*pi, 2*pi, quadrilateral=True, reorder=False,
+mesh = fd.PeriodicRectangleMesh(
+    32, 24, 2*fd.pi, 2*fd.pi, quadrilateral=True, reorder=False,
 )
-V = FunctionSpace(mesh, "Q", 1)
-u = Function(V)
+V = fd.FunctionSpace(mesh, "Q", 1)
+u = fd.Function(V)
 Lu = PeriodicFractionalLaplacian(u, 0.4)
 ```
 
 The three-dimensional construction uses the same operator:
 
 ```python
-mesh = PeriodicBoxMesh(
-    24, 20, 16, 2*pi, 2*pi, 2*pi,
+mesh = fd.PeriodicBoxMesh(
+    24, 20, 16, 2*fd.pi, 2*fd.pi, 2*fd.pi,
     hexahedral=True, reorder=False,
 )
-V = FunctionSpace(mesh, "Q", 1)
-Lu = PeriodicFractionalLaplacian(Function(V), 0.62)
+V = fd.FunctionSpace(mesh, "Q", 1)
+Lu = PeriodicFractionalLaplacian(fd.Function(V), 0.62)
 ```
 
 There are no boundary conditions or quadrature controls. Construction checks

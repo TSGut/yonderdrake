@@ -50,6 +50,15 @@ Representations
 .. autoclass:: yonderdrake.FullHistory
    :members:
 
+.. autoclass:: yonderdrake.LubichCQ
+   :members:
+
+.. autoclass:: yonderdrake.AlikhanovL21Sigma
+   :members:
+
+.. autoclass:: yonderdrake.FastObliviousCQ
+   :members:
+
 Formulations and steppers
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -61,8 +70,6 @@ Formulations and steppers
 
 .. autoclass:: yonderdrake.Oscillator
    :members:
-
-.. autofunction:: yonderdrake.FractionalTimeStepper
 
 .. autofunction:: yonderdrake.TimeMemoryStepper
 
@@ -112,6 +119,9 @@ Caputo-Wismer applications
 .. autofunction:: yonderdrake.applications.sphere_sensor_locations
 
 .. autoclass:: yonderdrake.applications.CaputoWismerModel
+   :members:
+
+.. autoclass:: yonderdrake.applications.CaputoWismerPropagation
    :members:
 
 .. autoclass:: yonderdrake.applications.CaputoWismerInverseProblem
